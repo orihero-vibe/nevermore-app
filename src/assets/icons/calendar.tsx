@@ -1,30 +1,19 @@
 import * as React from "react"
-import Svg, { Path } from "react-native-svg"
-
-const CalendarIcon = (props: any) => (
+import Svg, { Path, SvgProps } from "react-native-svg"
+const CalendarIcon = (props: SvgProps) => (
   <Svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={24}
-    height={24}
+    width={18}
+    height={18}
     fill="none"
     {...props}
   >
     <Path
-      stroke="#fff"
+      stroke={props.color || "#fff"}
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={2}
-      d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
-    />
-    <Path
-      stroke="#fff"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"
+      strokeWidth={1.5}
+      d="M.75 6.75h16m-12 4h8m-4-7v-3m-5 3v-3m10 3v-3m-12 16h14a1 1 0 0 0 1-1v-12a1 1 0 0 0-1-1h-14a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z"
     />
   </Svg>
 )
-
 export default CalendarIcon
-

@@ -23,5 +23,9 @@ export enum ScreenNames {
   
   // Tab Screens
   HOME = 'Home',
-  UPDATES = 'Updates',
+  FORTY_DAY = 'FortyDay',
+  BOOKMARK = 'Bookmark',
+  
+  // Detail Screens
+  TEMPTATION_DETAILS = 'TemptationDetails',
 }

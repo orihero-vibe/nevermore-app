@@ -1,6 +1,7 @@
 import * as React from "react"
 import Svg, { Path, SvgProps } from "react-native-svg"
-const MenuIcon = (props: SvgProps) => (
+
+const SoundWaveIcon = (props: SvgProps) => (
   <Svg
     width={24}
     height={24}
@@ -8,12 +9,13 @@ const MenuIcon = (props: SvgProps) => (
     {...props}
   >
     <Path
-      stroke={props.color || "#fff"}
+      stroke="#965CDF"
+      strokeWidth={1.5}
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.5}
-      d="M4.5 6.5h15M4.5 12h15m-15 5.5h15"
+      d="M2 12h4l4-4v12l-4-4H2zM12 8v8M16 6v12M20 4v16"
     />
   </Svg>
 )
-export default MenuIcon
+
+export default SoundWaveIcon

@@ -7,6 +7,7 @@ import * as React from 'react';
 import { useColorScheme } from 'react-native';
 import { useFonts, Cinzel_400Regular, Cinzel_600SemiBold, Cinzel_900Black,  } from '@expo-google-fonts/cinzel';
 import { useFonts as useRobotoFonts, Roboto_400Regular, Roboto_500Medium, Roboto_700Bold } from '@expo-google-fonts/roboto';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Navigation } from './navigation';
 import { CustomSplashScreen } from './components/CustomSplashScreen';
 
@@ -54,15 +55,17 @@ export function App() {
   }
 
   return (
-    <Navigation
-      theme={theme}
-      linking={{
-        enabled: 'auto',
-        prefixes: [prefix],
-      }}
-      onReady={() => {
-        SplashScreen.hideAsync();
-      }}
-    />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Navigation
+        theme={theme}
+        linking={{
+          enabled: 'auto',
+          prefixes: [prefix],
+        }}
+        onReady={() => {
+          SplashScreen.hideAsync();
+        }}
+      />
+    </GestureHandlerRootView>
   );
 }
