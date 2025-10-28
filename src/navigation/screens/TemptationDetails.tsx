@@ -11,6 +11,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming, 
+  withDelay,
+  useDerivedValue, 
+  runOnJS 
+} from 'react-native-reanimated';
 import {
   BackdropFilter,
   Blur,
@@ -100,45 +108,72 @@ export default function TemptationDetails() {
   const font = useFont(Roboto_400Regular, 13);
   const cardFont = useFont(Roboto_400Regular, 16);
 
-  // Animation setup for tab indicator
-  const [indicatorPosition, setIndicatorPosition] = useState(60); // Start at Recovery position
-  const animationRef = useRef<NodeJS.Timeout | null>(null);
+  // Reanimated shared values for entrance animations
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(-30);
+  const canvasOpacity = useSharedValue(0);
+  const canvasTranslateY = useSharedValue(50);
+  const contentOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(30);
+
+  // Animation setup for tab indicator using Reanimated
+  const indicatorPosition = useSharedValue(60); // Start at Recovery position
+  const [skiaIndicatorPosition, setSkiaIndicatorPosition] = useState(60);
   
+  // Create a derived value that updates the Skia position
+  const animatedPosition = useDerivedValue(() => {
+    'worklet';
+    runOnJS(setSkiaIndicatorPosition)(indicatorPosition.value);
+    return indicatorPosition.value;
+  });
+
+  // Entrance animations on mount
+  useEffect(() => {
+    const animateComponents = () => {
+      // Header animation
+      headerOpacity.value = withTiming(1, { duration: 600 });
+      headerTranslateY.value = withTiming(0, { duration: 600 });
+      
+      // Canvas animation with delay
+      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+      
+      // Content animation with delay
+      contentOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
+      contentTranslateY.value = withDelay(400, withTiming(0, { duration: 600 }));
+    };
+
+    // Start animation after fonts are loaded
+    const timer = setTimeout(animateComponents, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     const targetPosition = activeButton === 'recovery' ? 60 : width - 180;
-    
-    if (animationRef.current) {
-      clearInterval(animationRef.current);
-    }
-    
-    const startPosition = indicatorPosition;
-    const distance = targetPosition - startPosition;
-    const duration = 300; // ms
-    const steps = 30; // number of animation steps
-    const stepDuration = duration / steps;
-    const stepDistance = distance / steps;
-    
-    let currentStep = 0;
-    
-    animationRef.current = setInterval(() => {
-      currentStep++;
-      const newPosition = startPosition + (stepDistance * currentStep);
-      setIndicatorPosition(newPosition);
-      
-      if (currentStep >= steps) {
-        setIndicatorPosition(targetPosition);
-        if (animationRef.current) {
-          clearInterval(animationRef.current);
-        }
-      }
-    }, stepDuration);
-    
-    return () => {
-      if (animationRef.current) {
-        clearInterval(animationRef.current);
-      }
+    indicatorPosition.value = withTiming(targetPosition, { duration: 300 });
+  }, [activeButton, width, indicatorPosition]);
+
+  // Animated styles
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: headerOpacity.value,
+      transform: [{ translateY: headerTranslateY.value }],
     };
-  }, [activeButton, width]);
+  });
+
+  const canvasAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: canvasOpacity.value,
+      transform: [{ translateY: canvasTranslateY.value }],
+    };
+  });
+
+  const contentAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: contentOpacity.value,
+      transform: [{ translateY: contentTranslateY.value }],
+    };
+  });
 
   const handleBack = () => {
     navigation.goBack();
@@ -146,6 +181,15 @@ export default function TemptationDetails() {
 
   const handleButtonPress = (buttonId: 'recovery' | 'support') => {
     setActiveButton(buttonId);
+  };
+
+  // Press animation for tab buttons
+  const handleTabPressIn = () => {
+    // Add subtle press feedback if needed
+  };
+
+  const handleTabPressOut = () => {
+    // Reset press feedback if needed
   };
 
   const handlePlayPause = () => {
@@ -167,7 +211,7 @@ export default function TemptationDetails() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <ArrowLeftIcon />
         </TouchableOpacity>
@@ -175,9 +219,10 @@ export default function TemptationDetails() {
         <TouchableOpacity style={styles.bookmarkButton}>
           <BookmarkIcon />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      <Canvas style={styles.canvas}>
+      <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
+        <Canvas style={styles.canvas}>
         {/* Background Image */}
         <SkiaImage image={bg} x={0} y={0} width={width} height={900} fit="cover" />
 
@@ -199,14 +244,14 @@ export default function TemptationDetails() {
         <BackdropFilter
           filter={<Blur blur={5} />}
           clip={rrect({ 
-            x: indicatorPosition, 
+            x: skiaIndicatorPosition, 
             y: 205, 
             width: 120, 
             height: 40 
           }, 6, 6)}
         >
           <Rect
-            x={indicatorPosition}
+            x={skiaIndicatorPosition}
             y={205}
             width={120}
             height={40}
@@ -231,19 +276,29 @@ export default function TemptationDetails() {
           color="white"
         />
       </Canvas>
+      </Animated.View>
 
       {/* Action Buttons */}
       <TouchableOpacity
         style={styles.recoveryButton}
         onPress={() => handleButtonPress('recovery')}
+        onPressIn={handleTabPressIn}
+        onPressOut={handleTabPressOut}
+        activeOpacity={0.8}
       />
 
       <TouchableOpacity
         style={styles.supportButton}
         onPress={() => handleButtonPress('support')}
+        onPressIn={handleTabPressIn}
+        onPressOut={handleTabPressOut}
+        activeOpacity={0.8}
       />
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView 
+        style={[styles.content, contentAnimatedStyle]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Main Title */}
         <Text style={styles.mainTitle}>{temptationTitle}</Text>
 
@@ -303,7 +358,7 @@ export default function TemptationDetails() {
             <ReflectionQuestionItem onPress={() => {}} />
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
@@ -337,6 +392,9 @@ const styles = StyleSheet.create({
   },
   bookmarkButton: {
     padding: 8,
+  },
+  canvasContainer: {
+    flex: 1,
   },
   canvas: {
     flex: 1,

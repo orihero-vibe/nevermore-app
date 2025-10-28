@@ -12,7 +12,14 @@ import {
   useFont,
   useImage,
 } from '@shopify/react-native-skia';
-import { useSharedValue, withTiming, useDerivedValue, runOnJS } from 'react-native-reanimated';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming, 
+  withDelay,
+  useDerivedValue, 
+  runOnJS 
+} from 'react-native-reanimated';
 import { Roboto_400Regular } from '@expo-google-fonts/roboto';
 import { Cinzel_400Regular } from '@expo-google-fonts/cinzel';
 import MenuIcon from '../../assets/icons/menu';
@@ -29,6 +36,17 @@ export function Bookmark() {
   const cardFont = useFont(Roboto_400Regular, 16);
   const insets = useSafeAreaInsets();
 
+  // Reanimated shared values for entrance animations
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(-30);
+  const canvasOpacity = useSharedValue(0);
+  const canvasTranslateY = useSharedValue(50);
+  const tabOpacity = useSharedValue(0);
+  const tabTranslateY = useSharedValue(30);
+  const cardOpacity = useSharedValue(0);
+  const cardTranslateY = useSharedValue(30);
+  const cardScale = useSharedValue(0.9);
+
   // Animation setup for tab indicator using Reanimated
   const indicatorPosition = useSharedValue(60); // Start at Recovery position
   const [skiaIndicatorPosition, setSkiaIndicatorPosition] = useState(60);
@@ -40,10 +58,51 @@ export function Bookmark() {
     return indicatorPosition.value;
   });
   
+  // Entrance animations on mount
+  useEffect(() => {
+    const animateComponents = () => {
+      // Header animation
+      headerOpacity.value = withTiming(1, { duration: 600 });
+      headerTranslateY.value = withTiming(0, { duration: 600 });
+      
+      // Canvas animation with delay
+      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+      
+      // Tab animation with delay
+      tabOpacity.value = withDelay(400, withTiming(1, { duration: 400 }));
+      tabTranslateY.value = withDelay(400, withTiming(0, { duration: 400 }));
+      
+      // Card animation with delay
+      cardOpacity.value = withDelay(600, withTiming(1, { duration: 500 }));
+      cardTranslateY.value = withDelay(600, withTiming(0, { duration: 500 }));
+      cardScale.value = withDelay(600, withTiming(1, { duration: 500 }));
+    };
+
+    // Start animation after fonts are loaded
+    const timer = setTimeout(animateComponents, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     const targetPosition = activeButton === 'recovery' ? 60 : width - 180;
     indicatorPosition.value = withTiming(targetPosition, { duration: 300 });
   }, [activeButton, width, indicatorPosition]);
+
+  // Animated styles
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: headerOpacity.value,
+      transform: [{ translateY: headerTranslateY.value }],
+    };
+  });
+
+  const canvasAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: canvasOpacity.value,
+      transform: [{ translateY: canvasTranslateY.value }],
+    };
+  });
 
   const handleTabPress = (tabId: string) => {
     setActiveTab(tabId);
@@ -54,18 +113,28 @@ export function Bookmark() {
     setActiveButton(buttonId);
   };
 
+  // Press animation for tab buttons
+  const handleTabPressIn = () => {
+    // Add subtle press feedback if needed
+  };
+
+  const handleTabPressOut = () => {
+    // Reset press feedback if needed
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
         <TouchableOpacity style={styles.menuButton}>
           <MenuIcon />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nevermore</Text>
         <View style={styles.headerRight} />
-      </View>
+      </Animated.View>
 
-      <Canvas style={styles.canvas}>
+      <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
+        <Canvas style={styles.canvas}>
         {/* Background Image */}
         <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
 
@@ -165,17 +234,24 @@ export function Bookmark() {
             fit="contain"
           />
         </BackdropFilter>
-      </Canvas>
+        </Canvas>
+      </Animated.View>
 
       {/* Action Buttons */}
       <TouchableOpacity
         style={styles.recoveryButton}
         onPress={() => handleButtonPress('recovery')}
+        onPressIn={handleTabPressIn}
+        onPressOut={handleTabPressOut}
+        activeOpacity={0.8}
       />
 
       <TouchableOpacity
         style={styles.supportButton}
         onPress={() => handleButtonPress('support')}
+        onPressIn={handleTabPressIn}
+        onPressOut={handleTabPressOut}
+        activeOpacity={0.8}
       />
     </View>
   );
@@ -209,6 +285,9 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 40,
+  },
+  canvasContainer: {
+    flex: 1,
   },
   canvas: {
     flex: 1,

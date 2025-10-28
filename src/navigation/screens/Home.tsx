@@ -115,11 +115,10 @@ export default function Home() {
   });
 
   const handleCategoryPress = (category: string, index: number) => {
-    // Add press animation with optimized spring
-    categoryScales.value[index] = withSequence(
-      withSpring(0.95, { damping: 20, stiffness: 300 }),
-      withSpring(1, { damping: 20, stiffness: 300 })
-    );
+    // Simple press animation without bouncing
+    categoryScales.value[index] = withTiming(0.98, { duration: 100 }, () => {
+      categoryScales.value[index] = withTiming(1, { duration: 100 });
+    });
     
     // Use runOnJS for state updates to avoid bridge calls
     runOnJS(setSelectedCategory)(category);
@@ -150,28 +149,19 @@ export default function Home() {
   // Animate components on mount with Reanimated
   useEffect(() => {
     const animateComponents = () => {
-      // Header animation
+      // Header animation - smooth without bouncing
       headerOpacity.value = withTiming(1, { duration: 600 });
-      headerTranslateY.value = withSpring(0, { 
-        damping: 20, 
-        stiffness: 100 
-      });
+      headerTranslateY.value = withTiming(0, { duration: 600 });
       
-      // Canvas animation with delay
+      // Canvas animation with delay - smooth without bouncing
       canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-      canvasTranslateY.value = withDelay(200, withSpring(0, { 
-        damping: 15, 
-        stiffness: 80 
-      }));
+      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
       
-      // Staggered category animations
+      // Staggered category animations - smooth without bouncing
       categories.forEach((_, index) => {
         const delay = 400 + (index * 150);
         categoryOpacities.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
-        categoryScales.value[index] = withDelay(delay, withSpring(1, { 
-          damping: 15, 
-          stiffness: 100 
-        }));
+        categoryScales.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
       });
     };
 
@@ -240,7 +230,7 @@ export default function Home() {
           y={150}
         />
 
-        {/* Glassmorphic Cards - Optimized rendering */}
+        {/* Glassmorphic Cards - visible static colors to ensure text renders */}
         {categories.map((cat, i) => {
           const top = 200 + i * 90;
           const cardHeight = 70;
@@ -253,20 +243,19 @@ export default function Home() {
               key={i}
               filter={<Blur blur={5} />}
               clip={rrect({ x: 30, y: top, width: cardWidth, height: cardHeight }, 12, 12)}
-              transform={[{ scale: categoryScales.value[i] }]}
             >
               <Rect
                 x={30}
                 y={top}
                 width={cardWidth}
                 height={cardHeight}
-                color={`rgba(255,255,255,${0.1 * categoryOpacities.value[i]})`}
+                color={'rgba(255,255,255,0.1)'}
               />
               <SkiaText
                 x={60}
                 y={top + cardHeight / 2 + 6}
                 text={cat}
-                color={`rgba(255,255,255,${categoryOpacities.value[i]})`}
+                color={'white'}
                 font={categoryFont}
               />
 
@@ -279,14 +268,14 @@ export default function Home() {
                   cx={chevronX}
                   cy={chevronY}
                   r={12}
-                  color={`rgba(255,255,255,${0.2 * categoryOpacities.value[i]})`}
+                  color={'rgba(255,255,255,0.2)'}
                 />
               </BackdropFilter>
 
               {/* Chevron Down Icon */}
               <Path
                 path={`M ${chevronX - 4} ${chevronY - 2} L ${chevronX} ${chevronY + 2} L ${chevronX + 4} ${chevronY - 2}`}
-                color={`rgba(255,255,255,${categoryOpacities.value[i]})`}
+                color={'white'}
                 style="stroke"
                 strokeWidth={1.5}
               />
