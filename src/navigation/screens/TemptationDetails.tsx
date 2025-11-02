@@ -1,39 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Dimensions,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { Roboto_400Regular } from '@expo-google-fonts/roboto';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withTiming, 
-  withDelay,
-  useDerivedValue, 
-  runOnJS 
-} from 'react-native-reanimated';
 import {
-  BackdropFilter,
-  Blur,
   Canvas,
   Image as SkiaImage,
-  Rect,
-  rrect,
-  Text as SkiaText,
   useFont,
-  useImage,
+  useImage
 } from '@shopify/react-native-skia';
+import React, { useEffect, useState } from 'react';
+import {
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import BookmarkIcon from '../../assets/icons/bookmark';
-import { Cinzel_400Regular } from '@expo-google-fonts/cinzel';
-import { Roboto_400Regular } from '@expo-google-fonts/roboto';
+import BookmarkActiveIcon from '../../assets/icons/bookmark-active';
+import BackwardIcon from '../../assets/icons/backward10';
+import Forward10Icon from '../../assets/icons/forward10';
+import PlayIcon from '../../assets/icons/play';
+import PauseIcon from '../../assets/icons/pause';
+import StopButtonIcon from '../../assets/icons/stop-button';
+import { MediaControls } from '../../components/MediaControls';
+import { ScreenNames } from '../../constants/ScreenNames';
+import { useTabSwitcher } from '../../hooks/useTabSwitcher';
+import { useBookmarkStore } from '../../store/bookmarkStore';
+import { Image } from 'expo-image';
 
 type RootStackParamList = {
   TemptationDetails: {
@@ -45,12 +46,12 @@ type TemptationDetailsRouteProp = RouteProp<RootStackParamList, 'TemptationDetai
 type TemptationDetailsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'TemptationDetails'>;
 
 // Static waveform component
-const WaveformIcon: React.FC<{ isActive?: boolean; isPlaying?: boolean }> = ({ 
-  isActive = false, 
-  isPlaying = false 
+const WaveformIcon: React.FC<{ isActive?: boolean; isPlaying?: boolean }> = ({
+  isActive = false,
+  isPlaying = false
 }) => {
   const waveformColor = isActive ? '#8B5CF6' : '#FFFFFF';
-  
+
   return (
     <View style={styles.waveformContainer}>
       {Array.from({ length: 20 }, (_, i) => (
@@ -71,23 +72,25 @@ const WaveformIcon: React.FC<{ isActive?: boolean; isPlaying?: boolean }> = ({
 };
 
 // Media player control component
-const MediaPlayerControl: React.FC<{ icon: string; onPress: () => void }> = ({ icon, onPress }) => (
+const MediaPlayerControl: React.FC<{ icon: React.ReactNode; onPress: () => void }> = ({ icon, onPress }) => (
   <TouchableOpacity style={styles.mediaControl} onPress={onPress}>
-    <Text style={styles.mediaControlText}>{icon}</Text>
+    {icon}
   </TouchableOpacity>
 );
 
 // Reflection question item component
-const ReflectionQuestionItem: React.FC<{ 
-  isPlaying?: boolean; 
+const ReflectionQuestionItem: React.FC<{
+  isPlaying?: boolean;
   onPress: () => void;
 }> = ({ isPlaying = false, onPress }) => (
   <TouchableOpacity style={styles.reflectionItem} onPress={onPress}>
     <WaveformIcon isActive={isPlaying} isPlaying={isPlaying} />
     <TouchableOpacity style={styles.playButton}>
-      <Text style={styles.playButtonIcon}>
-        {isPlaying ? '⏸' : '▶'}
-      </Text>
+      {isPlaying ? (
+        <PauseIcon width={16} height={16} color="#FFFFFF" />
+      ) : (
+        <PlayIcon width={16} height={16} color="#FFFFFF" />
+      )}
     </TouchableOpacity>
   </TouchableOpacity>
 );
@@ -96,15 +99,23 @@ export default function TemptationDetails() {
   const navigation = useNavigation<TemptationDetailsNavigationProp>();
   const route = useRoute<TemptationDetailsRouteProp>();
   const insets = useSafeAreaInsets();
-  
+
+  console.log('route', route);
+
+
   const { temptationTitle } = route.params;
   const [activeButton, setActiveButton] = useState<'recovery' | 'support'>('recovery');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState('00:05');
   const [totalTime] = useState('03:00');
 
+  // Bookmark store
+  const { toggleBookmark, isBookmarked } = useBookmarkStore();
+  const bookmarkId = `temptation-${temptationTitle.toLowerCase().replace(/\s+/g, '-')}`;
+  const isCurrentlyBookmarked = isBookmarked(bookmarkId);
+
   const width = Dimensions.get('window').width;
-  const bg = useImage(require('../../assets/main-bg.png'));
+  const bg = useImage(require('../../assets/gradient.png'));
   const font = useFont(Roboto_400Regular, 13);
   const cardFont = useFont(Roboto_400Regular, 16);
 
@@ -112,32 +123,23 @@ export default function TemptationDetails() {
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-30);
   const canvasOpacity = useSharedValue(0);
-  const canvasTranslateY = useSharedValue(50);
+  const canvasTranslateY = useSharedValue(0);
   const contentOpacity = useSharedValue(0);
   const contentTranslateY = useSharedValue(30);
 
-  // Animation setup for tab indicator using Reanimated
-  const indicatorPosition = useSharedValue(60); // Start at Recovery position
-  const [skiaIndicatorPosition, setSkiaIndicatorPosition] = useState(60);
-  
-  // Create a derived value that updates the Skia position
-  const animatedPosition = useDerivedValue(() => {
-    'worklet';
-    runOnJS(setSkiaIndicatorPosition)(indicatorPosition.value);
-    return indicatorPosition.value;
-  });
+
 
   // Entrance animations on mount
   useEffect(() => {
     const animateComponents = () => {
       // Header animation
       headerOpacity.value = withTiming(1, { duration: 600 });
-      headerTranslateY.value = withTiming(0, { duration: 600 });
-      
+      headerTranslateY.value = withTiming(10, { duration: 600 });
+
       // Canvas animation with delay
       canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
-      
+      canvasTranslateY.value = withDelay(200, withTiming(-20, { duration: 800 }));
+
       // Content animation with delay
       contentOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
       contentTranslateY.value = withDelay(400, withTiming(0, { duration: 600 }));
@@ -148,10 +150,6 @@ export default function TemptationDetails() {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    const targetPosition = activeButton === 'recovery' ? 60 : width - 180;
-    indicatorPosition.value = withTiming(targetPosition, { duration: 300 });
-  }, [activeButton, width, indicatorPosition]);
 
   // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => {
@@ -183,14 +181,16 @@ export default function TemptationDetails() {
     setActiveButton(buttonId);
   };
 
-  // Press animation for tab buttons
-  const handleTabPressIn = () => {
-    // Add subtle press feedback if needed
-  };
-
-  const handleTabPressOut = () => {
-    // Reset press feedback if needed
-  };
+  // Use the tab switcher hook
+  const tabSwitcher = useTabSwitcher({
+    tabs: ['Recovery', 'Support'],
+    activeTab: activeButton === 'recovery' ? 'Recovery' : 'Support',
+    onTabChange: (tab) => {
+      const newButton = tab.toLowerCase() as 'recovery' | 'support';
+      handleButtonPress(newButton);
+    },
+    y: 100,
+  });
 
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -208,6 +208,10 @@ export default function TemptationDetails() {
     setIsPlaying(false);
   };
 
+  const handleBookmarkToggle = () => {
+    toggleBookmark(bookmarkId, temptationTitle);
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -216,129 +220,73 @@ export default function TemptationDetails() {
           <ArrowLeftIcon />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nevermore</Text>
-        <TouchableOpacity style={styles.bookmarkButton}>
-          <BookmarkIcon />
-        </TouchableOpacity>
+        <View />
       </Animated.View>
 
-      <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
-        <Canvas style={styles.canvas}>
-        {/* Background Image */}
-        <SkiaImage image={bg} x={0} y={0} width={width} height={900} fit="cover" />
-
-        {/* Single Blurred Tab Container */}
-        <BackdropFilter
-          filter={<Blur blur={5} />}
-          clip={rrect({ x: 50, y: 200, width: width - 100, height: 50 }, 8, 8)}
-        >
-          <Rect
-            x={50}
-            y={200}
-            width={width - 100}
-            height={50}
-            color="rgba(255,255,255,0.1)"
-          />
-        </BackdropFilter>
-
-        {/* Purple Active Indicator */}
-        <BackdropFilter
-          filter={<Blur blur={5} />}
-          clip={rrect({ 
-            x: skiaIndicatorPosition, 
-            y: 205, 
-            width: 120, 
-            height: 40 
-          }, 6, 6)}
-        >
-          <Rect
-            x={skiaIndicatorPosition}
-            y={205}
-            width={120}
-            height={40}
-            color="#8B5CF6"
-          />
-        </BackdropFilter>
-
-        {/* Tab Text */}
-        <SkiaText
-          x={120 - (cardFont?.getTextWidth('Recovery') || 0) / 2}
-          y={230}
-          text="Recovery"
-          font={cardFont}
-          color="white"
-        />
-
-        <SkiaText
-          x={width - 120 - (cardFont?.getTextWidth('Support') || 0) / 2}
-          y={230}
-          text="Support"
-          font={cardFont}
-          color="white"
-        />
-      </Canvas>
-      </Animated.View>
-
-      {/* Action Buttons */}
-      <TouchableOpacity
-        style={styles.recoveryButton}
-        onPress={() => handleButtonPress('recovery')}
-        onPressIn={handleTabPressIn}
-        onPressOut={handleTabPressOut}
-        activeOpacity={0.8}
-      />
-
-      <TouchableOpacity
-        style={styles.supportButton}
-        onPress={() => handleButtonPress('support')}
-        onPressIn={handleTabPressIn}
-        onPressOut={handleTabPressOut}
-        activeOpacity={0.8}
-      />
-
-      <Animated.ScrollView 
-        style={[styles.content, contentAnimatedStyle]} 
+      <Animated.ScrollView
+        style={[styles.content, contentAnimatedStyle]}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
       >
+        <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
+          <Canvas style={styles.canvas}>
+            {/* Background Image */}
+            <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
+            {/* Tab Switcher Elements */}
+            {tabSwitcher.containerElement}
+            {tabSwitcher.indicatorElement}
+            {tabSwitcher.textElements}
+          </Canvas>
+          {/* Tab Touchable Elements - inside ScrollView so they scroll with content */}
+          {tabSwitcher.touchableElements}
+        </Animated.View>
+
+
         {/* Main Title */}
-        <Text style={styles.mainTitle}>{temptationTitle}</Text>
+        <View style={styles.mainTitleContainer}>
+          <Text style={styles.mainTitle}>{temptationTitle}</Text>
+          <TouchableOpacity style={styles.bookmarkButton} onPress={handleBookmarkToggle}>
+            {isCurrentlyBookmarked ? (
+              <BookmarkActiveIcon width={20} height={24} color="#965CDF" />
+            ) : (
+              <BookmarkIcon width={20} height={24} />
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Media Player */}
-        <View style={styles.mediaPlayerCard}>
-          <View style={styles.mediaControls}>
-            <MediaPlayerControl icon="⏪ 10" onPress={handleRewind} />
-            <TouchableOpacity style={styles.playButtonMain} onPress={handlePlayPause}>
-              <Text style={styles.playButtonMainIcon}>{isPlaying ? '⏸' : '▶'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.stopButton} onPress={handleStop}>
-              <Text style={styles.stopButtonIcon}>⏹</Text>
-            </TouchableOpacity>
-            <MediaPlayerControl icon="10 ⏩" onPress={handleForward} />
-          </View>
-          
-          {/* Progress Bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View style={styles.progressFill} />
-            </View>
-            <View style={styles.timeContainer}>
-              <Text style={styles.timeText}>{currentTime}</Text>
-              <Text style={styles.timeText}>{totalTime}</Text>
-            </View>
-          </View>
-        </View>
+        <MediaControls
+          isPlaying={isPlaying}
+          currentTime={currentTime}
+          totalTime={totalTime}
+          onPlayPause={handlePlayPause}
+          onRewind={handleRewind}
+          onForward={handleForward}
+          onStop={handleStop}
+        />
 
         {/* Hospital Image Placeholder */}
         <View style={styles.imageContainer}>
-          <View style={styles.imagePlaceholder}>
-            <Text style={styles.imagePlaceholderText}>Hospital Bed Image</Text>
-          </View>
+          <Image source={{ uri: 'https://cdn.pixabay.com/photo/2023/10/30/12/36/hospital-8352776_640.jpg' }} style={styles.imagePlaceholder} />
         </View>
 
         {/* Transcript Section */}
         <View style={styles.transcriptSection}>
           <View style={styles.transcriptHeader}>
             <Text style={styles.sectionTitle}>Transcript</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate(
+                  // @ts-ignore: using string enum for screen name
+                  ScreenNames.TRANSCRIPT as never,
+                  {
+                    title: temptationTitle,
+                    transcript:
+                      'A light roast of the mental gymnastics we pull when we know we should probably see a doctor but decide that Googling "random chest tightness after coffee" at 2 AM is basically the same thing. This one\'s for anyone who has ever convinced themselves that if they just wait it out, their body will magically fix everything. Spoiler alert: it won’t, but at least we can laugh about it.\n\nHere\'s the full transcript content placeholder for now...'
+                  } as never
+                )
+              }
+            >
               <Text style={styles.viewAllLink}>View all</Text>
             </TouchableOpacity>
           </View>
@@ -351,11 +299,11 @@ export default function TemptationDetails() {
         <View style={styles.reflectionSection}>
           <Text style={styles.sectionTitle}>Reflection Questions</Text>
           <View style={styles.reflectionContainer}>
-            <ReflectionQuestionItem isPlaying={true} onPress={() => {}} />
-            <ReflectionQuestionItem onPress={() => {}} />
-            <ReflectionQuestionItem onPress={() => {}} />
-            <ReflectionQuestionItem onPress={() => {}} />
-            <ReflectionQuestionItem onPress={() => {}} />
+            <ReflectionQuestionItem isPlaying={true} onPress={() => { }} />
+            <ReflectionQuestionItem onPress={() => { }} />
+            <ReflectionQuestionItem onPress={() => { }} />
+            <ReflectionQuestionItem onPress={() => { }} />
+            <ReflectionQuestionItem onPress={() => { }} />
           </View>
         </View>
       </Animated.ScrollView>
@@ -391,44 +339,36 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto_400Regular',
   },
   bookmarkButton: {
-    padding: 8,
+    padding: 5,
   },
   canvasContainer: {
-    flex: 1,
+    height: 160,
+    position: 'relative',
+    overflow: 'visible',
   },
   canvas: {
-    flex: 1,
-  },
-  recoveryButton: {
-    position: 'absolute',
-    left: 60,
-    top: 205,
-    width: 120,
-    height: 40,
-    borderRadius: 6,
-    zIndex: 10,
-  },
-  supportButton: {
-    position: 'absolute',
-    right: 60,
-    top: 205,
-    width: 120,
-    height: 40,
-    borderRadius: 6,
-    zIndex: 10,
+    height: 300,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 280,
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  mainTitleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
   },
   mainTitle: {
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '600',
     fontFamily: 'Cinzel_400Regular',
-    marginBottom: 20,
     textAlign: 'left',
+    flex: 1,
+    paddingRight: 10,
   },
   mediaPlayerCard: {
     backgroundColor: '#1A1A1A',
@@ -444,31 +384,18 @@ const styles = StyleSheet.create({
   },
   mediaControl: {
     padding: 8,
-  },
-  mediaControlText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  playButtonMain: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#8B5CF6',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  playButtonMainIcon: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
+  playButtonMain: {
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   stopButton: {
     padding: 8,
-  },
-  stopButtonIcon: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   progressContainer: {
     marginTop: 10,
@@ -498,7 +425,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   imagePlaceholder: {
+    width: '100%',
     height: 200,
+    resizeMode: 'cover',
     backgroundColor: '#1A1A1A',
     borderRadius: 16,
     justifyContent: 'center',
@@ -569,10 +498,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B5CF6',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  playButtonIcon: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });

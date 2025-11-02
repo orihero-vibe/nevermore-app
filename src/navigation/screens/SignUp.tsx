@@ -64,13 +64,11 @@ export function SignUp() {
   };
 
   const handleTermsPress = () => {
-    // TODO: Navigate to terms and conditions
-    console.log('Terms and Conditions pressed');
+    navigation.navigate(ScreenNames.TERMS_CONDITIONS);
   };
 
   const handlePrivacyPress = () => {
-    // TODO: Navigate to privacy policy
-    console.log('Privacy Policy pressed');
+    navigation.navigate(ScreenNames.PRIVACY_POLICY);
   };
 
   return (

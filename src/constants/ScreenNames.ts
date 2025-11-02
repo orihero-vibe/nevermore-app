@@ -28,4 +28,15 @@ export enum ScreenNames {
   
   // Detail Screens
   TEMPTATION_DETAILS = 'TemptationDetails',
+  TRANSCRIPT = 'Transcript',
+  
+  // Legal Screens
+  PRIVACY_POLICY = 'PrivacyPolicy',
+  TERMS_CONDITIONS = 'TermsConditions',
+  
+  // Support Screens
+  HELP_SUPPORT = 'HelpSupport',
+  
+  // Invite Management
+  MANAGE_INVITES = 'ManageInvites',
 }

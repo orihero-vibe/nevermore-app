@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { DrawerActions } from '@react-navigation/native';
+import { Image as ExpoImage } from 'expo-image';
 import {
   BackdropFilter,
   Blur,
@@ -17,23 +21,41 @@ import Animated, {
   useAnimatedStyle, 
   withTiming, 
   withDelay,
-  useDerivedValue, 
-  runOnJS 
+  useAnimatedScrollHandler,
+  runOnJS,
+  useDerivedValue
 } from 'react-native-reanimated';
 import { Roboto_400Regular } from '@expo-google-fonts/roboto';
 import { Cinzel_400Regular } from '@expo-google-fonts/cinzel';
 import MenuIcon from '../../assets/icons/menu';
+import BookmarkActiveIcon from '../../assets/icons/bookmark-active';
+import { useTabSwitcher } from '../../hooks/useTabSwitcher';
+import { useBookmarkStore } from '../../store/bookmarkStore';
+import { ScreenNames } from '../../constants/ScreenNames';
+
+type RootStackParamList = {
+  TemptationDetails: {
+    temptationTitle: string;
+  };
+};
+
+type BookmarkNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+const { width, height } = Dimensions.get('window');
 
 export function Bookmark() {
+  const navigation = useNavigation<BookmarkNavigationProp>();
   const [activeTab, setActiveTab] = useState('bookmark');
   const [activeButton, setActiveButton] = useState('recovery');
   
-  const width = Dimensions.get('window').width;
+  // Get bookmarks from store
+  const { bookmarks, toggleBookmark } = useBookmarkStore();
+  
   const bg = useImage(require('../../assets/main-bg.png'));
   const bookmarkImg = useImage(require('../../assets/empty-bookmark.png'));
   const font = useFont(Roboto_400Regular, 13);
   const headerText = useFont(Cinzel_400Regular, 40);
-  const cardFont = useFont(Roboto_400Regular, 16);
+  const cardFont = useFont(Cinzel_400Regular, 14);
   const insets = useSafeAreaInsets();
 
   // Reanimated shared values for entrance animations
@@ -46,16 +68,20 @@ export function Bookmark() {
   const cardOpacity = useSharedValue(0);
   const cardTranslateY = useSharedValue(30);
   const cardScale = useSharedValue(0.9);
-
-  // Animation setup for tab indicator using Reanimated
-  const indicatorPosition = useSharedValue(60); // Start at Recovery position
-  const [skiaIndicatorPosition, setSkiaIndicatorPosition] = useState(60);
   
-  // Create a derived value that updates the Skia position
-  const animatedPosition = useDerivedValue(() => {
-    'worklet';
-    runOnJS(setSkiaIndicatorPosition)(indicatorPosition.value);
-    return indicatorPosition.value;
+  // Scroll-driven animation values
+  const scrollY = useSharedValue(0);
+  
+  // Derive tab Y position from scroll - smooth animation
+  const tabYPositionAnimated = useDerivedValue(() => {
+    // Start at 200, move up to 140 (60px up) as we scroll
+    const targetY = Math.max(140, 200 - scrollY.value * 0.75);
+    return targetY;
+  });
+  
+  // Update state for Skia rendering (Skia needs actual values, not shared values)
+  useDerivedValue(() => {
+    return tabYPositionAnimated.value;
   });
   
   // Entrance animations on mount
@@ -84,10 +110,6 @@ export function Bookmark() {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    const targetPosition = activeButton === 'recovery' ? 60 : width - 180;
-    indicatorPosition.value = withTiming(targetPosition, { duration: 300 });
-  }, [activeButton, width, indicatorPosition]);
 
   // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => {
@@ -100,8 +122,32 @@ export function Bookmark() {
   const canvasAnimatedStyle = useAnimatedStyle(() => {
     return {
       opacity: canvasOpacity.value,
+      height: 260,
       transform: [{ translateY: canvasTranslateY.value }],
     };
+  });
+
+  // Animated style for title based on scroll
+  const titleAnimatedStyle = useAnimatedStyle(() => {
+    // Fade out and shrink over 80 pixels of scroll
+    const opacity = 1 - (scrollY.value / 80);
+    const scale = 1 - (scrollY.value / 200);
+    const translateY = -(scrollY.value / 2);
+    
+    return {
+      opacity: Math.max(0, opacity),
+      transform: [
+        { scale: Math.max(0.5, scale) },
+        { translateY },
+      ],
+    };
+});
+
+  // Scroll handler
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
   });
 
   const handleTabPress = (tabId: string) => {
@@ -113,146 +159,149 @@ export function Bookmark() {
     setActiveButton(buttonId);
   };
 
-  // Press animation for tab buttons
-  const handleTabPressIn = () => {
-    // Add subtle press feedback if needed
+  // Use the tab switcher hook
+  const tabSwitcher = useTabSwitcher({
+    tabs: ['Recovery', 'Support'],
+    activeTab: activeButton === 'recovery' ? 'Recovery' : 'Support',
+    onTabChange: (tab) => handleButtonPress(tab.toLowerCase()),
+    y: tabYPositionAnimated.value,
+  });
+
+  const handleBookmarkPress = (bookmark: any) => {
+    navigation.navigate(ScreenNames.TEMPTATION_DETAILS, {
+      temptationTitle: bookmark.title,
+    });
   };
 
-  const handleTabPressOut = () => {
-    // Reset press feedback if needed
+  const handleRemoveBookmark = (bookmarkId: string, title: string) => {
+    toggleBookmark(bookmarkId, title);
   };
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
-        <TouchableOpacity style={styles.menuButton}>
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        >
           <MenuIcon />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nevermore</Text>
         <View style={styles.headerRight} />
       </Animated.View>
 
+      {/* Fixed Canvas at Top */}
       <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
         <Canvas style={styles.canvas}>
-        {/* Background Image */}
-        <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
+          {/* Background Image */}
+          <Image image={bg} x={0} y={0} width={width} height={height} fit="cover" />
 
-        {/* Main Title */}
-        <SkiaText
-          text="BOOKMARK"
-          font={headerText}
-          color="white"
-          x={width / 2 - 100}
-          y={150}
-        />
-
-        {/* Single Blurred Tab Container */}
-        <BackdropFilter
-          filter={<Blur blur={5} />}
-          clip={rrect({ x: 50, y: 200, width: width - 100, height: 50 }, 8, 8)}
-        >
-          <Rect
-            x={50}
-            y={200}
-            width={width - 100}
-            height={50}
-            color="rgba(255,255,255,0.1)"
-          />
-        </BackdropFilter>
-
-        {/* Purple Active Indicator */}
-        <BackdropFilter
-          filter={<Blur blur={5} />}
-          clip={rrect({ 
-            x: skiaIndicatorPosition, 
-            y: 205, 
-            width: 120, 
-            height: 40 
-          }, 6, 6)}
-        >
-          <Rect
-            x={skiaIndicatorPosition}
-            y={205}
-            width={120}
-            height={40}
-            color="#8B5CF6"
-          />
-        </BackdropFilter>
-
-        {/* Tab Text */}
-        <SkiaText
-          x={120 - (cardFont?.getTextWidth('Recovery') || 0) / 2}
-          y={230}
-          text="Recovery"
-          font={cardFont}
-          color="white"
-        />
-
-        <SkiaText
-          x={width - 120 - (cardFont?.getTextWidth('Support') || 0) / 2}
-          y={230}
-          text="Support"
-          font={cardFont}
-          color="white"
-        />
-
-        {/* Glassmorphic Card */}
-        <BackdropFilter
-          filter={<Blur blur={5} />}
-          clip={rrect({ x: 30, y: 290, width: width - 60, height: 200 }, 12, 12)}
-        >
-          <Rect
-            x={30}
-            y={290}
-            width={width - 60}
-            height={200}
-            color="rgba(255,255,255,0.1)"
-          />
-          {/* Card Text */}
-          <SkiaText
-            x={width / 2 - 120}
-            y={340}
-            text="Bookmark your favorite temptations."
-            font={cardFont}
-            color="white"
-          />
-          <SkiaText
-            x={width / 2 - 100}
-            y={360}
-            text="We'll save them here for you."
-            font={cardFont}
-            color="white"
-          />
-          {/* Bookmark Icon */}
-          <Image
-            image={bookmarkImg}
-            x={width / 2 - 30}
-            y={380}
-            width={60}
-            height={60}
-            fit="contain"
-          />
-        </BackdropFilter>
+          {/* Tab Switcher Elements */}
+          {tabSwitcher.containerElement}
+          {tabSwitcher.indicatorElement}
+          {tabSwitcher.textElements}
         </Canvas>
+        
+        {/* Animated Title Overlay - positioned absolutely for animation */}
+        <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
+          <Animated.Text style={styles.mainTitle}>BOOKMARK</Animated.Text>
+        </Animated.View>
       </Animated.View>
 
-      {/* Action Buttons */}
-      <TouchableOpacity
-        style={styles.recoveryButton}
-        onPress={() => handleButtonPress('recovery')}
-        onPressIn={handleTabPressIn}
-        onPressOut={handleTabPressOut}
-        activeOpacity={0.8}
-      />
+      {/* Tab Touchable Elements */}
+      {tabSwitcher.touchableElements}
 
-      <TouchableOpacity
-        style={styles.supportButton}
-        onPress={() => handleButtonPress('support')}
-        onPressIn={handleTabPressIn}
-        onPressOut={handleTabPressOut}
-        activeOpacity={0.8}
-      />
+      {/* Scrollable Content Below */}
+      {bookmarks.length === 0 ? (
+        // Empty state
+        <View style={styles.emptyContainer}>
+          <ExpoImage 
+            source={require('../../assets/empty-bookmark.png')} 
+            style={styles.emptyImage}
+            contentFit="contain"
+          />
+          <Text style={styles.emptyTitle}>No bookmarks yet</Text>
+          <Text style={styles.emptyText}>
+            Bookmark your favorite temptations.{'\n'}
+            We'll save them here for you.
+          </Text>
+        </View>
+      ) : (
+        // Bookmarks ScrollView
+        <Animated.ScrollView 
+          style={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContentContainer}
+          showsVerticalScrollIndicator={false}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+        >
+          <Canvas style={[styles.bookmarkCanvas, { height: bookmarks.length * 85 + 20 }]}>
+            {/* Background for cards */}
+            <Image image={bg} x={0} y={0} width={width} height={bookmarks.length * 85 + 20} fit="cover" />
+            
+            {/* Bookmark Cards with Real Blur Effect */}
+            {bookmarks.map((bookmark, index) => {
+              const top = index * 85;
+              const cardHeight = 75;
+              const cardWidth = width - 40;
+
+              return (
+                <BackdropFilter
+                  key={bookmark.id}
+                  filter={<Blur blur={5} />}
+                  clip={rrect({ x: 20, y: top, width: cardWidth, height: cardHeight }, 12, 12)}
+                >
+                  <Rect
+                    x={20}
+                    y={top}
+                    width={cardWidth}
+                    height={cardHeight}
+                    color={'rgba(255,255,255,0.1)'}
+                  />
+                  {/* Bookmark Title */}
+                  <SkiaText
+                    x={35}
+                    y={top + cardHeight / 2 + 6}
+                    text={bookmark.title}
+                    color={'white'}
+                    font={cardFont}
+                  />
+                </BackdropFilter>
+              );
+            })}
+          </Canvas>
+
+          {/* Touchable overlay for bookmarks */}
+          {bookmarks.map((bookmark, index) => {
+            const top = index * 85;
+            return (
+              <View
+                key={`touch-${bookmark.id}`}
+                style={[
+                  styles.bookmarkTouchable,
+                  { top }
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.bookmarkTouchableInner}
+                  onPress={() => handleBookmarkPress(bookmark)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.bookmarkIconButton}
+                  onPress={() => handleRemoveBookmark(bookmark.id, bookmark.title)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <BookmarkActiveIcon width={20} height={24} color="#965CDF" />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </Animated.ScrollView>
+      )}
     </View>
   );
 }
@@ -287,28 +336,81 @@ const styles = StyleSheet.create({
     width: 40,
   },
   canvasContainer: {
-    flex: 1,
+    position: 'relative',
   },
   canvas: {
+    height: 300,
+  },
+  titleContainer: {
+    position: 'absolute',
+    top: 90,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+  mainTitle: {
+    color: '#FFFFFF',
+    fontSize: 40,
+    fontWeight: '400',
+    fontFamily: 'Cinzel_400Regular',
+    textAlign: 'center',
+  },
+  scrollContainer: {
     flex: 1,
   },
-  recoveryButton: {
-    position: 'absolute',
-    left: 60,
-    top: 205,
-    width: 120,
-    height: 40,
-    borderRadius: 6,
-    zIndex: 10,
+  scrollContentContainer: {
+    paddingBottom: 100,
   },
-  supportButton: {
+  bookmarkCanvas: {
+    width: width,
+  },
+  bookmarkTouchable: {
     position: 'absolute',
-    right: 60,
-    top: 205,
-    width: 120,
-    height: 40,
-    borderRadius: 6,
-    zIndex: 10,
+    left: 20,
+    right: 20,
+    height: 75,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+  },
+  bookmarkTouchableInner: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
+  },
+  bookmarkIconButton: {
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 60,
+  },
+  emptyImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 20,
+    opacity: 0.5,
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+    fontFamily: 'Cinzel_400Regular',
+    marginBottom: 12,
+  },
+  emptyText: {
+    color: '#888888',
+    fontSize: 14,
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

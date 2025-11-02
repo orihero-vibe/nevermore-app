@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import React from 'react';
 import { Platform } from 'react-native';
 import { ScreenNames } from '../constants/ScreenNames';
@@ -19,13 +20,24 @@ import { Invite } from './screens/Invite';
 import { InviteSend } from './screens/InviteSend';
 import { Subscription } from './screens/Subscription';
 import TemptationDetails from './screens/TemptationDetails';
+import Transcript from './screens/Transcript';
+import Profile from './screens/Profile';
+import ManageInvites from './screens/ManageInvites';
+import PrivacyPolicy from './screens/PrivacyPolicy';
+import TermsAndConditions from './screens/TermsAndConditions';
+import HelpSupport from './screens/HelpSupport';
 import HomeIcon from '../assets/icons/home';
+import HomeActiveIcon from '../assets/icons/home-active';
 import CalendarIcon from '../assets/icons/calendar';
+import CalendarActiveIcon from '../assets/icons/calendar-active';
 import BookmarkIcon from '../assets/icons/bookmark';
+import BookmarkActiveIcon from '../assets/icons/bookmark-active';
+import { CustomDrawerContent } from '../components/DrawerMenu';
 
 import Home from './screens/Home';
 
 const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
 
 function HomeTabs() {
   return (
@@ -54,7 +66,6 @@ function HomeTabs() {
         },
         headerShown: false,
         tabBarHideOnKeyboard: true,
-        tabBarAnimationEnabled: true,
       }}
     >
       <Tab.Screen
@@ -62,9 +73,10 @@ function HomeTabs() {
         component={Home}
         options={{
           title: 'Temptations',
-          tabBarIcon: ({ color, size }) => (
-            <HomeIcon color={color} width={size} height={size} />
-          ),
+          tabBarIcon: ({ color, size, focused }) => {
+            const Icon = focused ? HomeActiveIcon : HomeIcon;
+            return <Icon color={color} width={size} height={size} />;
+          },
         }}
       />
       <Tab.Screen
@@ -72,9 +84,10 @@ function HomeTabs() {
         component={FortyDay}
         options={{
           title: '40 Day',
-          tabBarIcon: ({ color, size }) => (
-            <CalendarIcon color={color} width={size} height={size} />
-          ),
+          tabBarIcon: ({ color, size, focused }) => {
+            const Icon = focused ? CalendarActiveIcon : CalendarIcon;
+            return <Icon color={color} width={size} height={size} />;
+          },
         }}
       />
       <Tab.Screen
@@ -82,12 +95,41 @@ function HomeTabs() {
         component={Bookmark}
         options={{
           title: 'Bookmark',
-          tabBarIcon: ({ color, size }) => (
-            <BookmarkIcon color={color} width={size} height={size} />
-          ),
+          tabBarIcon: ({ color, size, focused }) => {
+            const Icon = focused ? <BookmarkActiveIcon color={color} width={14} height={18} /> : <BookmarkIcon color={color} width={14} height={17} />;
+            return Icon;
+          },
         }}
       />
     </Tab.Navigator>
+  );
+}
+
+function DrawerNavigator() {
+  return (
+    <Drawer.Navigator
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      screenOptions={{
+        drawerType: 'slide',
+        overlayColor: 'rgba(0, 0, 0, 0.5)',
+        drawerStyle: {
+          width: '85%',
+          backgroundColor: 'transparent',
+        },
+        headerShown: false,
+        swipeEnabled: true,
+        swipeEdgeWidth: 50,
+      }}
+    >
+      <Drawer.Screen
+        name={ScreenNames.HOME_TABS}
+        component={HomeTabs}
+        options={{
+          drawerLabel: '',
+          drawerItemStyle: { height: 0 },
+        }}
+      />
+    </Drawer.Navigator>
   );
 }
 
@@ -191,7 +233,7 @@ function RootStack() {
       />
       <Stack.Screen
         name={ScreenNames.HOME_TABS}
-        component={HomeTabs}
+        component={DrawerNavigator}
         options={{
           title: 'Home',
         }}
@@ -205,6 +247,48 @@ function RootStack() {
           animationDuration: 400,
           gestureEnabled: true,
           gestureDirection: 'vertical',
+        }}
+      />
+      <Stack.Screen
+        name={ScreenNames.TRANSCRIPT}
+        component={Transcript}
+        options={{
+          title: 'Transcript',
+        }}
+      />
+      <Stack.Screen
+        name={ScreenNames.PROFILE}
+        component={Profile}
+        options={{
+          title: 'Profile',
+        }}
+      />
+      <Stack.Screen
+        name={ScreenNames.MANAGE_INVITES}
+        component={ManageInvites}
+        options={{
+          title: 'Manage Invites',
+        }}
+      />
+      <Stack.Screen
+        name={ScreenNames.PRIVACY_POLICY}
+        component={PrivacyPolicy}
+        options={{
+          title: 'Privacy Policy',
+        }}
+      />
+      <Stack.Screen
+        name={ScreenNames.TERMS_CONDITIONS}
+        component={TermsAndConditions}
+        options={{
+          title: 'Terms & Conditions',
+        }}
+      />
+      <Stack.Screen
+        name={ScreenNames.HELP_SUPPORT}
+        component={HelpSupport}
+        options={{
+          title: 'Help & Support',
         }}
       />
     </Stack.Navigator>
