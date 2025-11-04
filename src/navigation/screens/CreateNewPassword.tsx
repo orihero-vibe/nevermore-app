@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Input } from '../../components/Input';
 import { PasswordInput } from '../../components/PasswordInput';
 import { Button } from '../../components/Button';
@@ -18,8 +19,14 @@ import { ScreenNames } from '../../constants/ScreenNames';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import CheckIcon from '../../assets/icons/check';
 
+type RootStackParamList = {
+  [ScreenNames.HOME_TABS]: undefined;
+};
+
+type CreateNewPasswordNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export const CreateNewPassword: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<CreateNewPasswordNavigationProp>();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('Qwerty1234!');
   const [showPassword, setShowPassword] = useState(false);

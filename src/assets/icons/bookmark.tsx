@@ -2,9 +2,10 @@ import * as React from "react"
 import Svg, { Path, SvgProps } from "react-native-svg"
 const BookmarkIcon = (props: SvgProps) => (
   <Svg
-    width={14}
-    height={17}
+    width={props.width || 14}
+    height={props.height || 17}
     fill="none"
+    viewBox="0 0 14 17"
     {...props}
   >
     <Path

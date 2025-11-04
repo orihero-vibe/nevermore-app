@@ -30,10 +30,10 @@ const generateMockDays = (): DayData[] => {
   for (let i = 1; i <= 40; i++) {
     const tasks: Task[] = [
       { id: 'read-book', title: 'Read a book', subtitle: 'Information', completed: i <= 2 },
-      { id: 'check-in', title: 'Day 12 Check-in', subtitle: 'Log your day', completed: i <= 1 },
+      { id: 'check-in', title: `Day ${i} Check-in`, subtitle: 'Log your day', completed: i <= 1 },
       { id: 'listen', title: 'You should listen to this', subtitle: 'Information', completed: false },
       { id: 'exercise', title: 'Exercise', subtitle: 'Go for a walk', completed: i <= 3 },
-      { id: 'meditate', title: 'Mediate', subtitle: 'Inner peace', completed: i <= 1 },
+      { id: 'meditate', title: 'Meditate', subtitle: 'Inner peace', completed: i <= 1 },
     ];
     
     const completedTasks = tasks.filter(task => task.completed).length;

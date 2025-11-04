@@ -1,4 +1,8 @@
+import { Cinzel_400Regular } from "@expo-google-fonts/cinzel";
 import { Roboto_400Regular } from "@expo-google-fonts/roboto";
+import { useNavigation } from '@react-navigation/native';
+import { DrawerActions } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   BackdropFilter,
   Blur,
@@ -12,25 +16,17 @@ import {
   useFont,
   useImage,
 } from "@shopify/react-native-skia";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withTiming, 
-  withSpring, 
-  withDelay,
-  interpolate,
-  Extrapolate,
+import Animated, {
   runOnJS,
-  withSequence
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming
 } from 'react-native-reanimated';
-import { TapGestureHandler, State } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import MenuIcon from '../../assets/icons/menu';
-import { Cinzel_400Regular } from "@expo-google-fonts/cinzel";
 import { TemptationBottomSheet } from '../../components/TemptationBottomSheet';
 import { ScreenNames } from '../../constants/ScreenNames';
 
@@ -51,11 +47,11 @@ type HomeNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function Home() {
   const navigation = useNavigation<HomeNavigationProp>();
   const categories = [
-    "PHYSICAL HEALTH & MEDICAL AVOIDANCE",
-    "EMOTIONAL & PSYCHOLOGICAL TRIGGERS",
-    "SOCIAL & RELATIONSHIP DYNAMICS",
-    "CULTURAL & SOCIETAL INFLUENCES",
-    "FINANCIAL & LIFESTYLE IMPACTS",
+    "Physical Health & Medical Avoidance",
+    "Emotional & Psychological Triggers",
+    "Social & Relationship Dynamics",
+    "Cultural & Societal Influences",
+    "Financial & Lifestyle Impacts",
   ];
 
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
@@ -72,54 +68,53 @@ export default function Home() {
   const categoryScales = useSharedValue(categories.map(() => 1));
   const categoryOpacities = useSharedValue(categories.map(() => 0));
   const [categoryTemptations, setCategoryTemptations] = useState<Record<string, TemptationItem[]>>({
-    "PHYSICAL HEALTH & MEDICAL AVOIDANCE": [
-      { id: '1', title: 'AVOIDING THE DOCTOR', selected: true },
-      { id: '2', title: 'FEAR OF WITHDRAWAL' },
-      { id: '3', title: 'RELAPSE' },
-      { id: '4', title: 'SELF DIAGNOSING' },
-      { id: '5', title: 'SELF MEDICATING' },
-      { id: '6', title: 'SUBSTITUTING' },
+    "Physical Health & Medical Avoidance": [
+      { id: '1', title: 'Avoiding the Doctor', selected: true },
+      { id: '2', title: 'Fear of Withdrawal' },
+      { id: '3', title: 'Relapse' },
+      { id: '4', title: 'Self Diagnosing' },
+      { id: '5', title: 'Self Medicating' },
+      { id: '6', title: 'Subsituting' },
     ],
-    "EMOTIONAL & PSYCHOLOGICAL TRIGGERS": [
-      { id: '7', title: 'STRESS EATING', selected: true },
-      { id: '8', title: 'EMOTIONAL NUMBING' },
-      { id: '9', title: 'ANXIETY AVOIDANCE' },
-      { id: '10', title: 'DEPRESSION COPING' },
-      { id: '11', title: 'ANGER MANAGEMENT' },
-      { id: '12', title: 'LONELINESS' },
+    "Emotional & Psychological Triggers": [
+      { id: '7', title: 'Stress Eating', selected: true },
+      { id: '8', title: 'Emotional Numbing' },
+      { id: '9', title: 'Anxiety Avoidance' },
+      { id: '10', title: 'Depression Coping' },
+      { id: '11', title: 'Anger Management' },
+      { id: '12', title: 'Loneliness' },
     ],
-    "SOCIAL & RELATIONSHIP DYNAMICS": [
-      { id: '13', title: 'PEER PRESSURE', selected: true },
-      { id: '14', title: 'SOCIAL ANXIETY' },
-      { id: '15', title: 'RELATIONSHIP CONFLICTS' },
-      { id: '16', title: 'FAMILY EXPECTATIONS' },
-      { id: '17', title: 'SOCIAL ISOLATION' },
-      { id: '18', title: 'GROUP DYNAMICS' },
+    "Social & Relationship Dynamics": [
+      { id: '13', title: 'Peer Pressure', selected: true },
+      { id: '14', title: 'Social Anxiety' },
+      { id: '15', title: 'Relationship Conflicts' },
+      { id: '16', title: 'Family Expectations' },
+      { id: '17', title: 'Social Isolation' },
+      { id: '18', title: 'Group Dynamics' },
     ],
-    "CULTURAL & SOCIETAL INFLUENCES": [
-      { id: '19', title: 'CULTURAL NORMS', selected: true },
-      { id: '20', title: 'MEDIA INFLUENCE' },
-      { id: '21', title: 'SOCIAL MEDIA PRESSURE' },
-      { id: '22', title: 'CELEBRATION CULTURE' },
-      { id: '23', title: 'WORKPLACE CULTURE' },
-      { id: '24', title: 'RELIGIOUS EXPECTATIONS' },
+    "Cultural & Societal Influences": [
+      { id: '19', title: 'Cultural Norms', selected: true },
+      { id: '20', title: 'Media Influence' },
+      { id: '21', title: 'Social Media Pressure' },
+      { id: '22', title: 'Celebration Culture' },
+      { id: '23', title: 'Workplace Culture' },
+      { id: '24', title: 'Religious Expectations' },
     ],
-    "FINANCIAL & LIFESTYLE IMPACTS": [
-      { id: '25', title: 'FINANCIAL STRESS', selected: true },
-      { id: '26', title: 'WORK PRESSURE' },
-      { id: '27', title: 'LIFESTYLE CHANGES' },
-      { id: '28', title: 'ECONOMIC ANXIETY' },
-      { id: '29', title: 'CONSUMER CULTURE' },
-      { id: '30', title: 'SOCIAL STATUS' },
+    "Financial & Lifestyle Impacts": [
+      { id: '25', title: 'Financial Stress', selected: true },
+      { id: '26', title: 'Work Pressure' },
+      { id: '27', title: 'Lifestyle Changes' },
+      { id: '28', title: 'Economic Anxiety' },
+      { id: '29', title: 'Consumer Culture' },
+      { id: '30', title: 'Social Status' },
     ],
   });
 
   const handleCategoryPress = (category: string, index: number) => {
-    // Add press animation with optimized spring
-    categoryScales.value[index] = withSequence(
-      withSpring(0.95, { damping: 20, stiffness: 300 }),
-      withSpring(1, { damping: 20, stiffness: 300 })
-    );
+    // Simple press animation without bouncing
+    categoryScales.value[index] = withTiming(0.98, { duration: 100 }, () => {
+      categoryScales.value[index] = withTiming(1, { duration: 100 });
+    });
     
     // Use runOnJS for state updates to avoid bridge calls
     runOnJS(setSelectedCategory)(category);
@@ -150,28 +145,19 @@ export default function Home() {
   // Animate components on mount with Reanimated
   useEffect(() => {
     const animateComponents = () => {
-      // Header animation
+      // Header animation - smooth without bouncing
       headerOpacity.value = withTiming(1, { duration: 600 });
-      headerTranslateY.value = withSpring(0, { 
-        damping: 20, 
-        stiffness: 100 
-      });
+      headerTranslateY.value = withTiming(0, { duration: 600 });
       
-      // Canvas animation with delay
+      // Canvas animation with delay - smooth without bouncing
       canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-      canvasTranslateY.value = withDelay(200, withSpring(0, { 
-        damping: 15, 
-        stiffness: 80 
-      }));
+      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
       
-      // Staggered category animations
+      // Staggered category animations - smooth without bouncing
       categories.forEach((_, index) => {
         const delay = 400 + (index * 150);
         categoryOpacities.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
-        categoryScales.value[index] = withDelay(delay, withSpring(1, { 
-          damping: 15, 
-          stiffness: 100 
-        }));
+        categoryScales.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
       });
     };
 
@@ -207,7 +193,10 @@ export default function Home() {
     <View style={[styles.container,]}>
       {/* Header */}
       <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
-        <TouchableOpacity style={styles.menuButton}>
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        >
           <MenuIcon />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nevermore</Text>
@@ -240,7 +229,7 @@ export default function Home() {
           y={150}
         />
 
-        {/* Glassmorphic Cards - Optimized rendering */}
+        {/* Glassmorphic Cards - visible static colors to ensure text renders */}
         {categories.map((cat, i) => {
           const top = 200 + i * 90;
           const cardHeight = 70;
@@ -253,20 +242,19 @@ export default function Home() {
               key={i}
               filter={<Blur blur={5} />}
               clip={rrect({ x: 30, y: top, width: cardWidth, height: cardHeight }, 12, 12)}
-              transform={[{ scale: categoryScales.value[i] }]}
             >
               <Rect
                 x={30}
                 y={top}
                 width={cardWidth}
                 height={cardHeight}
-                color={`rgba(255,255,255,${0.1 * categoryOpacities.value[i]})`}
+                color={'rgba(255,255,255,0.1)'}
               />
               <SkiaText
                 x={60}
                 y={top + cardHeight / 2 + 6}
                 text={cat}
-                color={`rgba(255,255,255,${categoryOpacities.value[i]})`}
+                color={'white'}
                 font={categoryFont}
               />
 
@@ -279,14 +267,14 @@ export default function Home() {
                   cx={chevronX}
                   cy={chevronY}
                   r={12}
-                  color={`rgba(255,255,255,${0.2 * categoryOpacities.value[i]})`}
+                  color={'rgba(255,255,255,0.2)'}
                 />
               </BackdropFilter>
 
               {/* Chevron Down Icon */}
               <Path
                 path={`M ${chevronX - 4} ${chevronY - 2} L ${chevronX} ${chevronY + 2} L ${chevronX + 4} ${chevronY - 2}`}
-                color={`rgba(255,255,255,${categoryOpacities.value[i]})`}
+                color={'white'}
                 style="stroke"
                 strokeWidth={1.5}
               />

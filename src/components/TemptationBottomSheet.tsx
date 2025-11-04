@@ -38,30 +38,31 @@ const AnimatedTemptationItem: React.FC<{
   const scaleAnim = useSharedValue(0.8);
   const translateYAnim = useSharedValue(30);
   const pressScale = useSharedValue(1);
+  const backgroundOpacity = useSharedValue(0);
 
   React.useEffect(() => {
-    // Optimized staggered entrance animation
+    // Smooth staggered entrance animation without bouncing
     const delay = index * 80; // Reduced delay for faster animation
-    fadeAnim.value = withTiming(1, { duration: 300 }, () => {
-      scaleAnim.value = withSpring(1, { damping: 20, stiffness: 150 });
-      translateYAnim.value = withSpring(0, { damping: 20, stiffness: 150 });
-    });
+    fadeAnim.value = withTiming(1, { duration: 300 });
+    scaleAnim.value = withTiming(1, { duration: 300 });
+    translateYAnim.value = withTiming(0, { duration: 300 });
   }, [index]);
 
   const handlePressIn = () => {
-    pressScale.value = withSpring(0.95, { damping: 20, stiffness: 250 });
+    pressScale.value = withTiming(0.98, { duration: 100 });
+    backgroundOpacity.value = withTiming(1, { duration: 200 });
   };
 
   const handlePressOut = () => {
-    pressScale.value = withSpring(1, { damping: 20, stiffness: 250 });
+    pressScale.value = withTiming(1, { duration: 100 });
+    backgroundOpacity.value = withTiming(0, { duration: 200 });
   };
 
   const handlePress = () => {
-    // Optimized bounce effect on press
-    pressScale.value = withSequence(
-      withSpring(0.9, { damping: 15, stiffness: 400 }),
-      withSpring(1, { damping: 20, stiffness: 250 })
-    );
+    // Simple press effect without bouncing
+    pressScale.value = withTiming(0.95, { duration: 50 }, () => {
+      pressScale.value = withTiming(1, { duration: 100 });
+    });
     
     // Call the original onPress after a shorter delay
     setTimeout(() => {
@@ -79,6 +80,12 @@ const AnimatedTemptationItem: React.FC<{
     };
   });
 
+  const backgroundAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: backgroundOpacity.value,
+    };
+  });
+
   return (
     <Animated.View style={animatedStyle}>
       <TouchableOpacity
@@ -92,14 +99,19 @@ const AnimatedTemptationItem: React.FC<{
           <Text style={styles.unselectedItemText}>{item.title}</Text>
         </View>
         
-        {/* Background Image */}
-        <ImageBackground
-          source={cardBg}
-          style={styles.selectedItemBackground}
-          imageStyle={styles.selectedItemImageStyle}
+        {/* Animated Background Image */}
+        <Animated.View 
+          style={[styles.animatedBackground, backgroundAnimatedStyle]}
+          pointerEvents="none"
         >
-          <Text style={styles.selectedItemText}>{item.title}</Text>
-        </ImageBackground>
+          <ImageBackground
+            source={cardBg}
+            style={styles.selectedItemBackground}
+            imageStyle={styles.selectedItemImageStyle}
+          >
+            <Text style={styles.selectedItemText}>{item.title}</Text>
+          </ImageBackground>
+        </Animated.View>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -267,6 +279,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     height: 72,
     position: 'relative',
+  },
+  animatedBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   selectedItemBackground: {
     height: 72,

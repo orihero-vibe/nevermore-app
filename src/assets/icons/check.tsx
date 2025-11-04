@@ -2,10 +2,11 @@ import * as React from "react"
 import Svg, { Path, SvgProps } from "react-native-svg"
 const CheckIcon = (props: SvgProps) => (
   <Svg
-    width={15}
-    height={11}
+    width={props.width || 15}
+    height={props.height || 11}
+    viewBox="0 0 15 11"
     fill="none"
-    stroke={props.stroke || '#8b5cf6'}
+    stroke={props.color || '#8b5cf6'}
     {...props}
   >
     <Path

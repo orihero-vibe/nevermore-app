@@ -1,12 +1,10 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming,
-  interpolate,
-  Extrapolate
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming
 } from 'react-native-reanimated';
 
 interface LoadingSpinnerProps {
@@ -62,3 +60,4 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
 });
+

@@ -6,7 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as React from 'react';
 import { useColorScheme } from 'react-native';
 import { useFonts, Cinzel_400Regular, Cinzel_600SemiBold, Cinzel_900Black,  } from '@expo-google-fonts/cinzel';
-import { useFonts as useRobotoFonts, Roboto_400Regular, Roboto_500Medium, Roboto_700Bold } from '@expo-google-fonts/roboto';
+import { useFonts as useRobotoFonts, Roboto_400Regular, Roboto_500Medium, Roboto_600SemiBold, Roboto_700Bold } from '@expo-google-fonts/roboto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Navigation } from './navigation';
 import { CustomSplashScreen } from './components/CustomSplashScreen';
@@ -28,6 +28,7 @@ export function App() {
   const [robotoFontsLoaded] = useRobotoFonts({
     Roboto_400Regular,
     Roboto_500Medium,
+    Roboto_600SemiBold,
     Roboto_700Bold,
   });
   const [showSplash, setShowSplash] = React.useState(true);
