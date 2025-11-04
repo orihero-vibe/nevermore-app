@@ -1,40 +1,39 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ImageBackground, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import { Image } from 'expo-image';
 
-export function CustomSplashScreen() {
+export function ExpoImageSplashScreen() {
   const [imageLoaded, setImageLoaded] = useState(false);
   
-  console.log('CustomSplashScreen rendering');
+  console.log('ExpoImageSplashScreen rendering');
   
   return (
     <View style={styles.container}>
       <StatusBar hidden />
-      <ImageBackground
+      <Image
         source={require('../assets/splash-bg.png')}
         style={styles.backgroundImage}
-        resizeMode="cover"
+        contentFit="cover"
         onLoad={() => {
-          console.log('Image loaded successfully');
+          console.log('Expo Image loaded successfully');
           setImageLoaded(true);
         }}
         onError={(error) => {
-          console.log('Image error:', error);
+          console.log('Expo Image error:', error);
           setImageLoaded(false);
         }}
-        onLoadStart={() => console.log('Image loading started')}
-        onLoadEnd={() => console.log('Image loading ended')}
-      >
-        <View style={styles.content}>
-          <Text style={styles.title}>
-            Nevermore
+        transition={200}
+      />
+      <View style={styles.content}>
+        <Text style={styles.title}>
+          Nevermore
+        </Text>
+        {!imageLoaded && (
+          <Text style={styles.loadingText}>
+            Loading...
           </Text>
-          {!imageLoaded && (
-            <Text style={styles.loadingText}>
-              Loading...
-            </Text>
-          )}
-        </View>
-      </ImageBackground>
+        )}
+      </View>
     </View>
   );
 }
@@ -45,17 +44,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#2D1B69',
   },
   backgroundImage: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(45, 27, 105, 0.3)', // Semi-transparent overlay
+    backgroundColor: 'rgba(45, 27, 105, 0.3)',
+    zIndex: 1,
   },
   title: {
     fontSize: 48,
@@ -77,3 +79,4 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
 });
+

@@ -10,13 +10,8 @@ import { useFonts as useRobotoFonts, Roboto_400Regular, Roboto_500Medium, Roboto
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Navigation } from './navigation';
 import { CustomSplashScreen } from './components/CustomSplashScreen';
-
-Asset.loadAsync([
-  ...NavigationAssets,
-  require('./assets/newspaper.png'),
-  require('./assets/bell.png'),
-  require('./assets/splash-bg.png'),
-]);
+import { SimpleSplashScreen } from './components/SimpleSplashScreen';
+import { ExpoImageSplashScreen } from './components/ExpoImageSplashScreen';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,22 +31,44 @@ export function App() {
     Roboto_700Bold,
   });
   const [showSplash, setShowSplash] = React.useState(true);
+  const [assetsLoaded, setAssetsLoaded] = React.useState(false);
 
   const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme
 
   React.useEffect(() => {
-    if (cinzelFontsLoaded && robotoFontsLoaded) {
-      // Show splash screen for at least 3 seconds
+    console.log('Loading assets...');
+    // Load assets first
+    Asset.loadAsync([
+      ...NavigationAssets,
+      require('./assets/newspaper.png'),
+      require('./assets/bell.png'),
+      require('./assets/splash-bg.png'),
+    ]).then(() => {
+      console.log('Assets loaded successfully');
+      setAssetsLoaded(true);
+    }).catch((error) => {
+      console.log('Asset loading error:', error);
+    });
+  }, []);
+
+  React.useEffect(() => {
+    console.log('Fonts and assets status:', { cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded });
+    if (cinzelFontsLoaded && robotoFontsLoaded && assetsLoaded) {
+      console.log('All loaded, starting timer...');
+      // Show splash screen for at least 2 seconds
       const timer = setTimeout(() => {
+        console.log('Hiding splash screen');
         setShowSplash(false);
-      }, 1000);
+        SplashScreen.hideAsync();
+      }, 2000);
       
       return () => clearTimeout(timer);
     }
-  }, [cinzelFontsLoaded, robotoFontsLoaded]);
+  }, [cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded]);
 
-  if (!cinzelFontsLoaded || !robotoFontsLoaded || showSplash) {
-    return <CustomSplashScreen />;
+  if (!cinzelFontsLoaded || !robotoFontsLoaded || !assetsLoaded || showSplash) {
+    console.log('Showing splash screen, status:', { cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded, showSplash });
+    return <ExpoImageSplashScreen />;
   }
 
   return (

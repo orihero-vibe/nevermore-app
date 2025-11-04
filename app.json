@@ -4,7 +4,12 @@
     "slug": "nevermore-app",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/icon.png",
+    "icon": "./src/assets/bell.png",
+    "splash": {
+      "image": "./src/assets/splash-bg.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#2D1B69"
+    },
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "nevermoreapp",
@@ -14,13 +19,13 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./src/assets/bell.png",
+        "backgroundColor": "#2D1B69"
       },
       "package": "com.nevermoreapp"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./src/assets/bell.png"
     },
     "plugins": [
       "expo-asset",
