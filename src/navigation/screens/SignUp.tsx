@@ -11,64 +11,61 @@ import {
   ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import CheckIcon from '../../assets/icons/check';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import { Input } from '../../components/Input';
 import { PasswordInput } from '../../components/PasswordInput';
 import { Button } from '../../components/Button';
-import { ScreenNames } from '../../constants/ScreenNames';
-
-interface PasswordRequirements {
-  capital: boolean;
-  numerical: boolean;
-  special: boolean;
-  match: boolean;
-}
+import { useSignUp } from '../../hooks/useSignUp';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 
 export function SignUp() {
-  const navigation = useNavigation();
-  const [email, setEmail] = useState('Mary.Langston@email.com');
+  const { 
+    goBack, 
+    navigateToPermission,
+    navigateToSignIn, 
+    navigateToTermsConditions, 
+    navigateToPrivacyPolicy 
+  } = useAppNavigation();
+  const { isLoading, validatePasswordRequirements, handleSignUp: signUpUser } = useSignUp();
+  
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('Qwerty1234!');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(true);
-  const [agreeToTerms, setAgreeToTerms] = useState(true);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
-  const checkPasswordRequirements = (): PasswordRequirements => {
-    const hasCapital = /[A-Z]/.test(password);
-    const hasNumerical = /\d/.test(password);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    const passwordsMatch = password === confirmPassword && password.length > 0;
+  const requirements = validatePasswordRequirements(password, confirmPassword);
 
-    return {
-      capital: hasCapital,
-      numerical: hasNumerical,
-      special: hasSpecial,
-      match: passwordsMatch,
-    };
-  };
-
-  const requirements = checkPasswordRequirements();
-
-  const handleSignUp = () => {
-    if (requirements.capital && requirements.numerical && requirements.special && requirements.match && agreeToTerms) {
-      // TODO: Implement sign up logic
-      // Navigate to email verification screen with signup source
-      navigation.navigate(ScreenNames.VERIFY_EMAIL as any, { source: 'signup' });
-    }
+  const handleSignUp = async () => {
+    await signUpUser(
+      {
+        email,
+        password,
+        confirmPassword,
+        agreeToTerms,
+        fullName: email.split('@')[0],
+      },
+      {
+        onSuccess: () => navigateToPermission(),
+        onError: (error) => {
+          console.error('Sign up failed:', error);
+        },
+      }
+    );
   };
 
   const handleSignIn = () => {
-    navigation.navigate(ScreenNames.SIGN_IN);
+    navigateToSignIn();
   };
 
   const handleTermsPress = () => {
-    navigation.navigate(ScreenNames.TERMS_CONDITIONS);
+    navigateToTermsConditions();
   };
 
   const handlePrivacyPress = () => {
-    navigation.navigate(ScreenNames.PRIVACY_POLICY);
+    navigateToPrivacyPolicy();
   };
 
   return (
@@ -85,21 +82,18 @@ export function SignUp() {
             style={styles.keyboardAvoidingView}
           >
             <ScrollView contentContainerStyle={styles.scrollContent}>
-              {/* Header */}
               <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
+                <TouchableOpacity onPress={goBack}>
                   <ArrowLeftIcon />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Nevermore</Text>
                 <View style={styles.headerSpacer} />
               </View>
 
-              {/* Main Content */}
               <View style={styles.content}>
                 <Text style={styles.title}>CREATE YOUR ACCOUNT</Text>
                 <Text style={styles.subtitle}>Enter your information below</Text>
 
-                {/* Email Field */}
                 <Input
                   label="Email"
                   placeholder="Enter Email"
@@ -108,9 +102,10 @@ export function SignUp() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textContentType="username"
+                  autoComplete="email"
                 />
 
-                {/* Password Field */}
                 <PasswordInput
                   label="Password"
                   placeholder="Enter password"
@@ -120,9 +115,10 @@ export function SignUp() {
                   onTogglePassword={() => setShowPassword(!showPassword)}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textContentType="newPassword"
+                  autoComplete="password-new"
                 />
 
-                {/* Re-enter Password Field */}
                 <PasswordInput
                   label="Re-enter Password"
                   placeholder="Re-enter password"
@@ -132,9 +128,10 @@ export function SignUp() {
                   onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textContentType="newPassword"
+                  autoComplete="password-new"
                 />
 
-                {/* Password Requirements */}
                 <View style={styles.requirementsContainer}>
                   <View style={styles.requirementItem}>
                     {requirements.capital ? <CheckIcon stroke="#8b5cf6" /> : <CheckIcon stroke="#666" />}
@@ -165,7 +162,6 @@ export function SignUp() {
                   </View>
                 </View>
 
-                {/* Terms and Conditions */}
                 <TouchableOpacity
                   style={styles.termsContainer}
                   onPress={() => setAgreeToTerms(!agreeToTerms)}
@@ -189,17 +185,15 @@ export function SignUp() {
                   </View>
                 </TouchableOpacity>
 
-                {/* Create Account Button */}
                 <Button
-                  title="Create Account"
+                  title={isLoading ? "Creating Account..." : "Create Account"}
                   onPress={handleSignUp}
                   variant="primary"
                   size="medium"
-                  disabled={!requirements.capital || !requirements.numerical || !requirements.special || !requirements.match || !agreeToTerms}
+                  disabled={isLoading || !requirements.capital || !requirements.numerical || !requirements.special || !requirements.match || !agreeToTerms}
                   style={styles.createAccountButton}
                 />
 
-                {/* Sign In Link */}
                 <View style={styles.signInContainer}>
                   <Text style={styles.signInText}>Already have an account? </Text>
                   <TouchableOpacity onPress={handleSignIn}>

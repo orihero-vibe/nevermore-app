@@ -9,9 +9,8 @@ import { useFonts, Cinzel_400Regular, Cinzel_600SemiBold, Cinzel_900Black,  } fr
 import { useFonts as useRobotoFonts, Roboto_400Regular, Roboto_500Medium, Roboto_600SemiBold, Roboto_700Bold } from '@expo-google-fonts/roboto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Navigation } from './navigation';
-import { CustomSplashScreen } from './components/CustomSplashScreen';
-import { SimpleSplashScreen } from './components/SimpleSplashScreen';
 import { ExpoImageSplashScreen } from './components/ExpoImageSplashScreen';
+import { useAuthStore } from './store/authStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,42 +32,59 @@ export function App() {
   });
   const [showSplash, setShowSplash] = React.useState(true);
   const [assetsLoaded, setAssetsLoaded] = React.useState(false);
+  const [authChecked, setAuthChecked] = React.useState(false);
+  const { checkAuth } = useAuthStore();
 
-  const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme
+  const theme = colorScheme === 'dark' ? {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      background: '#131313',
+    },
+  } : {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: '#131313',
+    },
+  }
 
   React.useEffect(() => {
-    console.log('Loading assets...');
-    // Load assets first
     Asset.loadAsync([
       ...NavigationAssets,
       require('./assets/newspaper.png'),
       require('./assets/bell.png'),
       require('./assets/splash-bg.png'),
     ]).then(() => {
-      console.log('Assets loaded successfully');
       setAssetsLoaded(true);
     }).catch((error) => {
-      console.log('Asset loading error:', error);
+      console.error('Asset loading error:', error);
     });
   }, []);
 
   React.useEffect(() => {
-    console.log('Fonts and assets status:', { cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded });
+    const initAuth = async () => {
+      await checkAuth();
+      setAuthChecked(true);
+    };
+
     if (cinzelFontsLoaded && robotoFontsLoaded && assetsLoaded) {
-      console.log('All loaded, starting timer...');
-      // Show splash screen for at least 2 seconds
+      initAuth();
+    }
+  }, [cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded, checkAuth]);
+
+  React.useEffect(() => {
+    if (cinzelFontsLoaded && robotoFontsLoaded && assetsLoaded && authChecked) {
       const timer = setTimeout(() => {
-        console.log('Hiding splash screen');
         setShowSplash(false);
         SplashScreen.hideAsync();
       }, 2000);
       
       return () => clearTimeout(timer);
     }
-  }, [cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded]);
+  }, [cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded, authChecked]);
 
-  if (!cinzelFontsLoaded || !robotoFontsLoaded || !assetsLoaded || showSplash) {
-    console.log('Showing splash screen, status:', { cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded, showSplash });
+  if (!cinzelFontsLoaded || !robotoFontsLoaded || !assetsLoaded || !authChecked || showSplash) {
     return <ExpoImageSplashScreen />;
   }
 

@@ -7,171 +7,108 @@ import {
   useFont,
   useImage
 } from '@shopify/react-native-skia';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Dimensions,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withTiming
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import BookmarkIcon from '../../assets/icons/bookmark';
 import BookmarkActiveIcon from '../../assets/icons/bookmark-active';
-import BackwardIcon from '../../assets/icons/backward10';
-import Forward10Icon from '../../assets/icons/forward10';
-import PlayIcon from '../../assets/icons/play';
-import PauseIcon from '../../assets/icons/pause';
-import StopButtonIcon from '../../assets/icons/stop-button';
 import { MediaControls } from '../../components/MediaControls';
+import { ReflectionQuestionItem } from '../../components/ReflectionQuestionItem';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { useTabSwitcher } from '../../hooks/useTabSwitcher';
 import { useBookmarkStore } from '../../store/bookmarkStore';
 import { Image } from 'expo-image';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { useContentDetails, useContentByCategoryAndRole } from '../../hooks/useContent';
+import { useEntranceAnimations } from '../../hooks/useEntranceAnimations';
+import { useAudioPlaylist } from '../../hooks/useAudioPlaylist';
+import { useContentPresentation } from '../../hooks/useContentPresentation';
 
 type RootStackParamList = {
   TemptationDetails: {
+    contentId: string;
     temptationTitle: string;
+    categoryId?: string;
   };
 };
 
 type TemptationDetailsRouteProp = RouteProp<RootStackParamList, 'TemptationDetails'>;
 type TemptationDetailsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'TemptationDetails'>;
 
-// Static waveform component
-const WaveformIcon: React.FC<{ isActive?: boolean; isPlaying?: boolean }> = ({
-  isActive = false,
-  isPlaying = false
-}) => {
-  const waveformColor = isActive ? '#8B5CF6' : '#FFFFFF';
-
-  return (
-    <View style={styles.waveformContainer}>
-      {Array.from({ length: 20 }, (_, i) => (
-        <View
-          key={i}
-          style={[
-            styles.waveformBar,
-            {
-              backgroundColor: waveformColor,
-              height: Math.random() * 20 + 8,
-              opacity: isActive && i < 8 ? 1 : 0.6,
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-};
-
-// Media player control component
-const MediaPlayerControl: React.FC<{ icon: React.ReactNode; onPress: () => void }> = ({ icon, onPress }) => (
-  <TouchableOpacity style={styles.mediaControl} onPress={onPress}>
-    {icon}
-  </TouchableOpacity>
-);
-
-// Reflection question item component
-const ReflectionQuestionItem: React.FC<{
-  isPlaying?: boolean;
-  onPress: () => void;
-}> = ({ isPlaying = false, onPress }) => (
-  <TouchableOpacity style={styles.reflectionItem} onPress={onPress}>
-    <WaveformIcon isActive={isPlaying} isPlaying={isPlaying} />
-    <TouchableOpacity style={styles.playButton}>
-      {isPlaying ? (
-        <PauseIcon width={16} height={16} color="#FFFFFF" />
-      ) : (
-        <PlayIcon width={16} height={16} color="#FFFFFF" />
-      )}
-    </TouchableOpacity>
-  </TouchableOpacity>
-);
-
 export default function TemptationDetails() {
   const navigation = useNavigation<TemptationDetailsNavigationProp>();
   const route = useRoute<TemptationDetailsRouteProp>();
   const insets = useSafeAreaInsets();
 
-  console.log('route', route);
-
-
-  const { temptationTitle } = route.params;
+  const { contentId, temptationTitle, categoryId } = route.params;
+  
+  // First, fetch the initial content to determine its role
+  const { 
+    content: initialContent, 
+    loading: initialLoading 
+  } = useContentDetails(contentId);
+  
+  // Use ref to track if we've initialized the role (doesn't trigger re-renders)
+  const hasInitializedRef = React.useRef(false);
+  
+  // Initialize activeButton based on initial content's role
   const [activeButton, setActiveButton] = useState<'recovery' | 'support'>('recovery');
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState('00:05');
-  const [totalTime] = useState('03:00');
-
+  
+  // Set initial role based on first content's role (only once)
+  React.useEffect(() => {
+    if (initialContent && !hasInitializedRef.current) {
+      const initialRole = initialContent.role?.toLowerCase();
+      if (initialRole === 'support' || initialRole === 'recovery') {
+        setActiveButton(initialRole as 'recovery' | 'support');
+      }
+      hasInitializedRef.current = true;
+    }
+  }, [initialContent]);
+  
+  // Custom hooks - fetch content by category and role (only when categoryId is provided)
+  const { 
+    content: roleBasedContent, 
+    loading: roleBasedLoading 
+  } = useContentByCategoryAndRole(categoryId || null, activeButton);
+  
+  // Determine which content to use
+  const content = categoryId 
+    ? (roleBasedContent && roleBasedContent.length > 0 ? roleBasedContent[0] : null)
+    : initialContent;
+  const loading = categoryId ? roleBasedLoading : initialLoading;
+  
+  const { headerAnimatedStyle, canvasAnimatedStyle, contentAnimatedStyle } = useEntranceAnimations();
+  const { selectedAudioIndex, audioPlayer, handleAudioSelect, loadPlaylist } = useAudioPlaylist();
+  const { transcript, displayImage, audioFiles } = useContentPresentation(content);
+  
   // Bookmark store
   const { toggleBookmark, isBookmarked } = useBookmarkStore();
-  const bookmarkId = `temptation-${temptationTitle.toLowerCase().replace(/\s+/g, '-')}`;
-  const isCurrentlyBookmarked = isBookmarked(bookmarkId);
+  const isCurrentlyBookmarked = content ? isBookmarked(content.$id) : false;
+
+  // Load playlist when content is available
+  const audioFilesRef = React.useRef<string[]>([]);
+  React.useEffect(() => {
+    // Only update if the audio files have actually changed
+    const hasChanged = audioFiles.length !== audioFilesRef.current.length || 
+                       audioFiles.some((file, idx) => file !== audioFilesRef.current[idx]);
+    
+    if (hasChanged && audioFiles.length > 0) {
+      audioFilesRef.current = audioFiles;
+      loadPlaylist(audioFiles);
+    }
+  }, [audioFiles, loadPlaylist]);
 
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
-  const font = useFont(Roboto_400Regular, 13);
-  const cardFont = useFont(Roboto_400Regular, 16);
-
-  // Reanimated shared values for entrance animations
-  const headerOpacity = useSharedValue(0);
-  const headerTranslateY = useSharedValue(-30);
-  const canvasOpacity = useSharedValue(0);
-  const canvasTranslateY = useSharedValue(0);
-  const contentOpacity = useSharedValue(0);
-  const contentTranslateY = useSharedValue(30);
-
-
-
-  // Entrance animations on mount
-  useEffect(() => {
-    const animateComponents = () => {
-      // Header animation
-      headerOpacity.value = withTiming(1, { duration: 600 });
-      headerTranslateY.value = withTiming(10, { duration: 600 });
-
-      // Canvas animation with delay
-      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-      canvasTranslateY.value = withDelay(200, withTiming(-20, { duration: 800 }));
-
-      // Content animation with delay
-      contentOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
-      contentTranslateY.value = withDelay(400, withTiming(0, { duration: 600 }));
-    };
-
-    // Start animation after fonts are loaded
-    const timer = setTimeout(animateComponents, 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-
-  // Animated styles
-  const headerAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: headerOpacity.value,
-      transform: [{ translateY: headerTranslateY.value }],
-    };
-  });
-
-  const canvasAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: canvasOpacity.value,
-      transform: [{ translateY: canvasTranslateY.value }],
-    };
-  });
-
-  const contentAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: contentOpacity.value,
-      transform: [{ translateY: contentTranslateY.value }],
-    };
-  });
 
   const handleBack = () => {
     navigation.goBack();
@@ -192,25 +129,32 @@ export default function TemptationDetails() {
     y: 100,
   });
 
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleRewind = () => {
-    // Mock rewind functionality
-  };
-
-  const handleForward = () => {
-    // Mock forward functionality
-  };
-
-  const handleStop = () => {
-    setIsPlaying(false);
-  };
-
   const handleBookmarkToggle = () => {
-    toggleBookmark(bookmarkId, temptationTitle);
+    if (!content) return;
+    // Pass the content role to the bookmark for filtering
+    toggleBookmark(content.$id, content.title || temptationTitle, content.role);
   };
+
+  // Display loading state
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <LoadingSpinner />
+      </View>
+    );
+  }
+
+  // Display error state if content not found
+  if (!content) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.errorText}>Content not found</Text>
+        <TouchableOpacity onPress={handleBack}>
+          <Text style={styles.backLink}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -220,7 +164,7 @@ export default function TemptationDetails() {
           <ArrowLeftIcon />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nevermore</Text>
-        <View />
+        <View style={styles.headerSpacer} />
       </Animated.View>
 
       <Animated.ScrollView
@@ -244,7 +188,7 @@ export default function TemptationDetails() {
 
         {/* Main Title */}
         <View style={styles.mainTitleContainer}>
-          <Text style={styles.mainTitle}>{temptationTitle}</Text>
+          <Text style={styles.mainTitle}>{content.title}</Text>
           <TouchableOpacity style={styles.bookmarkButton} onPress={handleBookmarkToggle}>
             {isCurrentlyBookmarked ? (
               <BookmarkActiveIcon width={20} height={24} color="#965CDF" />
@@ -256,56 +200,70 @@ export default function TemptationDetails() {
 
         {/* Media Player */}
         <MediaControls
-          isPlaying={isPlaying}
-          currentTime={currentTime}
-          totalTime={totalTime}
-          onPlayPause={handlePlayPause}
-          onRewind={handleRewind}
-          onForward={handleForward}
-          onStop={handleStop}
+          isPlaying={audioPlayer.isPlaying}
+          isLoading={audioPlayer.isLoading}
+          currentTime={audioPlayer.currentTime}
+          totalTime={audioPlayer.totalTime}
+          progress={audioPlayer.progress}
+          onPlayPause={audioPlayer.togglePlayPause}
+          onRewind={audioPlayer.rewind}
+          onForward={audioPlayer.forward}
+          onStop={audioPlayer.stop}
+          onSeek={audioPlayer.seekTo}
         />
 
-        {/* Hospital Image Placeholder */}
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: 'https://cdn.pixabay.com/photo/2023/10/30/12/36/hospital-8352776_640.jpg' }} style={styles.imagePlaceholder} />
-        </View>
+        {/* Image */}
+        {displayImage && (
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: displayImage }} style={styles.imagePlaceholder} />
+          </View>
+        )}
 
         {/* Transcript Section */}
-        <View style={styles.transcriptSection}>
-          <View style={styles.transcriptHeader}>
-            <Text style={styles.sectionTitle}>Transcript</Text>
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate(
-                  // @ts-ignore: using string enum for screen name
-                  ScreenNames.TRANSCRIPT as never,
-                  {
-                    title: temptationTitle,
-                    transcript:
-                      'A light roast of the mental gymnastics we pull when we know we should probably see a doctor but decide that Googling "random chest tightness after coffee" at 2 AM is basically the same thing. This one\'s for anyone who has ever convinced themselves that if they just wait it out, their body will magically fix everything. Spoiler alert: it won’t, but at least we can laugh about it.\n\nHere\'s the full transcript content placeholder for now...'
-                  } as never
-                )
-              }
-            >
-              <Text style={styles.viewAllLink}>View all</Text>
-            </TouchableOpacity>
+        {transcript && (
+          <View style={styles.transcriptSection}>
+            <View style={styles.transcriptHeader}>
+              <Text style={styles.sectionTitle}>Transcript</Text>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate(
+                    // @ts-ignore: using string enum for screen name
+                    ScreenNames.TRANSCRIPT as never,
+                    {
+                      title: content.title,
+                      transcript: transcript
+                    } as never
+                  )
+                }
+              >
+                <Text style={styles.viewAllLink}>View all</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.transcriptText} numberOfLines={4}>
+              {transcript}
+            </Text>
           </View>
-          <Text style={styles.transcriptText}>
-            A light roast of the mental gymnastics we pull when we know we should probably see a doctor but decide that Googling "random chest tightness after coffee" at 2 AM is basically the same thing. This one's for anyone who has ever convinced themselves that if they just wait it out, their body will...
-          </Text>
-        </View>
+        )}
 
         {/* Reflection Questions */}
-        <View style={styles.reflectionSection}>
-          <Text style={styles.sectionTitle}>Reflection Questions</Text>
-          <View style={styles.reflectionContainer}>
-            <ReflectionQuestionItem isPlaying={true} onPress={() => { }} />
-            <ReflectionQuestionItem onPress={() => { }} />
-            <ReflectionQuestionItem onPress={() => { }} />
-            <ReflectionQuestionItem onPress={() => { }} />
-            <ReflectionQuestionItem onPress={() => { }} />
+        {audioFiles.length > 0 && (
+          <View style={styles.reflectionSection}>
+            <Text style={styles.sectionTitle}>Reflection Questions</Text>
+            <FlatList
+              data={audioFiles}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item, index }) => (
+                <ReflectionQuestionItem
+                  isPlaying={index === selectedAudioIndex && audioPlayer.isPlaying}
+                  isLoading={index === selectedAudioIndex && audioPlayer.isLoading}
+                  onPress={() => handleAudioSelect(index)}
+                />
+              )}
+              contentContainerStyle={styles.reflectionContainer}
+              scrollEnabled={false}
+            />
           </View>
-        </View>
+        )}
       </Animated.ScrollView>
     </View>
   );
@@ -315,6 +273,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Roboto_400Regular',
+    marginBottom: 20,
+  },
+  backLink: {
+    color: '#8B5CF6',
+    fontSize: 16,
+    fontFamily: 'Roboto_400Regular',
   },
   header: {
     flexDirection: 'row',
@@ -338,6 +311,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Roboto_400Regular',
   },
+  headerSpacer: {
+    width:40,
+  },
   bookmarkButton: {
     padding: 5,
   },
@@ -345,13 +321,13 @@ const styles = StyleSheet.create({
     height: 160,
     position: 'relative',
     overflow: 'visible',
+    marginTop: 20,
   },
   canvas: {
     height: 300,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
   },
@@ -359,6 +335,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    paddingHorizontal: 20,
     marginBottom: 20,
   },
   mainTitle: {
@@ -380,12 +357,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
     marginBottom: 15,
-  },
-  mediaControl: {
-    padding: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   playButtonMain: {
     padding: 8,
@@ -423,6 +396,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     marginBottom: 20,
+    paddingHorizontal: 20,
   },
   imagePlaceholder: {
     width: '100%',
@@ -432,11 +406,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+
   },
   imagePlaceholderText: {
     color: '#666666',
     fontSize: 14,
     fontFamily: 'Roboto_400Regular',
+    paddingHorizontal: 20,
   },
   transcriptSection: {
     marginBottom: 30,
@@ -446,6 +422,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    paddingHorizontal: 20,
   },
   sectionTitle: {
     color: '#FFFFFF',
@@ -457,46 +434,20 @@ const styles = StyleSheet.create({
     color: '#8B5CF6',
     fontSize: 14,
     fontFamily: 'Roboto_400Regular',
+    paddingHorizontal: 20,
   },
   transcriptText: {
     color: '#FFFFFF',
     fontSize: 14,
     lineHeight: 20,
     fontFamily: 'Roboto_400Regular',
+    paddingHorizontal: 20,
   },
   reflectionSection: {
     marginBottom: 30,
+    paddingHorizontal: 20,
   },
   reflectionContainer: {
     marginTop: 15,
-  },
-  reflectionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    height: 60,
-  },
-  waveformContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    height: 30,
-  },
-  waveformBar: {
-    width: 2,
-    marginHorizontal: 1,
-    borderRadius: 1,
-  },
-  playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#8B5CF6',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

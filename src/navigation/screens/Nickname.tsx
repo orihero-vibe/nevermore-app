@@ -1,136 +1,104 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  ImageBackground,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import {
+  Canvas,
+  Image as SkiaImage,
+  useImage
+} from '@shopify/react-native-skia';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import { Button } from '../../components/Button';
 import { SecondaryButton } from '../../components/SecondaryButton';
 import { Input } from '../../components/Input';
 import { ScreenNames } from '../../constants/ScreenNames';
-
-type InputState = 'default' | 'error' | 'success';
+import { useNickname } from '../../hooks/useNickname';
 
 export function Nickname() {
   const navigation = useNavigation();
-  const [nickname, setNickname] = useState('');
-  const [inputState, setInputState] = useState<InputState>('default');
-  const [errorMessage, setErrorMessage] = useState('');
+  const {
+    nickname,
+    setNickname,
+    inputState,
+    errorMessage,
+    isLoading,
+    saveNickname,
+    skipNickname,
+    isNextEnabled,
+  } = useNickname();
+  
+  const width = Dimensions.get('window').width;
+  const height = Dimensions.get('window').height;
+  const bg = useImage(require('../../assets/gradient.png'));
 
-  // Simulate nickname availability check
-  const checkNicknameAvailability = async (value: string) => {
-    if (!value.trim()) {
-      setInputState('default');
-      setErrorMessage('');
-      return;
-    }
+  const mappedInputState = inputState === 'checking' ? 'default' : inputState;
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Simulate some taken nicknames
-    const takenNicknames = ['MLangston23', 'JohnDoe', 'TestUser', 'Admin'];
-    
-    if (takenNicknames.includes(value)) {
-      setInputState('error');
-      setErrorMessage('This username is already in use. Try a different nickname.');
-    } else {
-      setInputState('success');
-      setErrorMessage('');
-    }
+  const handleNext = async () => {
+    await saveNickname();
+    (navigation as any).navigate(ScreenNames.INVITE);
   };
 
-  // Debounced nickname check
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (nickname.trim()) {
-        checkNicknameAvailability(nickname);
-      } else {
-        setInputState('default');
-        setErrorMessage('');
-      }
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [nickname]);
-
-  const handleNext = () => {
-    if (nickname.trim() && inputState === 'success') {
-      // TODO: Store nickname and navigate to next screen
-      console.log('Nickname:', nickname);
-      navigation.navigate(ScreenNames.INVITE);
-    }
+  const handleSkip = async () => {
+    await skipNickname();
+    (navigation as any).navigate(ScreenNames.INVITE);
   };
-
-  const handleSkip = () => {
-    // TODO: Handle skip logic
-    console.log('Skip nickname');
-    navigation.navigate(ScreenNames.INVITE);
-  };
-
-
-  const isNextEnabled = nickname.trim() && inputState === 'success';
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <ImageBackground
-        source={require('../../assets/splash-bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={styles.safeArea}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <ArrowLeftIcon />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Nevermore</Text>
-            <View style={styles.headerSpacer} />
-          </View>
+      <Canvas style={styles.canvas}>
+        <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
+      </Canvas>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <ArrowLeftIcon />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Nevermore</Text>
+          <View style={styles.headerSpacer} />
+        </View>
 
-          {/* Main Content */}
-          <View style={styles.content}>
-            <Text style={styles.title}>WHAT SHOULD WE CALL YOU?</Text>
-            
-            <Input
-              label="Nickname"
-              placeholder="Example123"
-              value={nickname}
-              onChangeText={setNickname}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoFocus={true}
-              state={inputState}
-              errorMessage={errorMessage}
-            />
-          </View>
+        <View style={styles.content}>
+          <Text style={styles.title}>WHAT SHOULD WE CALL YOU?</Text>
+          
+          <Input
+            label="Nickname"
+            placeholder="Example123"
+            value={nickname}
+            onChangeText={setNickname}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoFocus={true}
+            state={mappedInputState}
+            errorMessage={errorMessage}
+          />
+        </View>
 
-          {/* Buttons */}
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Next"
-              onPress={handleNext}
-              variant="primary"
-              size="medium"
-              disabled={!isNextEnabled}
-              style={styles.nextButton}
-            />
-            <SecondaryButton
-              title="Skip"
-              onPress={handleSkip}
-              size="medium"
-              style={styles.skipButton}
-            />
-          </View>
-        </SafeAreaView>
-      </ImageBackground>
+        <View style={styles.buttonContainer}>
+          <Button
+            title={isLoading ? "Saving..." : "Next"}
+            onPress={handleNext}
+            variant="primary"
+            size="medium"
+            disabled={!isNextEnabled || isLoading}
+            style={styles.nextButton}
+          />
+          <SecondaryButton
+            title="Skip"
+            onPress={handleSkip}
+            size="medium"
+            disabled={isLoading}
+            style={styles.skipButton}
+          />
+        </View>
+      </SafeAreaView>
     </View>
   );
 }
@@ -140,10 +108,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+  canvas: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   safeArea: {
     flex: 1,

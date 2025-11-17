@@ -1,9 +1,9 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import React from 'react';
-import { Platform } from 'react-native';
+import { useAuthStore } from '../store/authStore';
 import { ScreenNames } from '../constants/ScreenNames';
 import { FortyDay } from './screens/FortyDay';
 import { Bookmark } from './screens/Bookmark';
@@ -12,7 +12,6 @@ import { SignIn } from './screens/SignIn';
 import { SignUp } from './screens/SignUp';
 import { ForgotPassword } from './screens/ForgotPassword';
 import { CreateNewPassword } from './screens/CreateNewPassword';
-import { VerifyEmail } from './screens/VerifyEmail';
 import { Permission } from './screens/Permission';
 import { Purpose } from './screens/Purpose';
 import { Nickname } from './screens/Nickname';
@@ -33,7 +32,6 @@ import CalendarActiveIcon from '../assets/icons/calendar-active';
 import BookmarkIcon from '../assets/icons/bookmark';
 import BookmarkActiveIcon from '../assets/icons/bookmark-active';
 import { CustomDrawerContent } from '../components/DrawerMenu';
-
 import Home from './screens/Home';
 
 const Tab = createBottomTabNavigator();
@@ -66,6 +64,9 @@ function HomeTabs() {
         },
         headerShown: false,
         tabBarHideOnKeyboard: true,
+        sceneStyle: {
+          backgroundColor: '#131313',
+        },
       }}
     >
       <Tab.Screen
@@ -135,13 +136,13 @@ function DrawerNavigator() {
 
 const Stack = createNativeStackNavigator();
 
-function RootStack() {
+function RootStack({ initialRouteName }: { initialRouteName: string }) {
   return (
     <Stack.Navigator
-      initialRouteName={ScreenNames.WELCOME}
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
-        animation: Platform.OS === 'ios' ? 'slide_from_right' : 'slide_from_right',
+        animation: 'slide_from_right',
         animationDuration: 300,
         gestureEnabled: true,
         gestureDirection: 'horizontal',
@@ -180,13 +181,6 @@ function RootStack() {
         component={CreateNewPassword}
         options={{
           title: 'Create New Password',
-        }}
-      />
-      <Stack.Screen
-        name={ScreenNames.VERIFY_EMAIL}
-        component={VerifyEmail}
-        options={{
-          title: 'Verify Email',
         }}
       />
       <Stack.Screen
@@ -295,14 +289,37 @@ function RootStack() {
   );
 }
 
-RootStack.displayName = 'RootStack';
+const linking = {
+  prefixes: ['nevermoreapp://'],
+  config: {
+    screens: {
+      [ScreenNames.CREATE_NEW_PASSWORD]: 'reset-password',
+      [ScreenNames.WELCOME]: '',
+      [ScreenNames.SIGN_IN]: 'signin',
+      [ScreenNames.SIGN_UP]: 'signup',
+      [ScreenNames.FORGOT_PASSWORD]: 'forgot-password',
+      [ScreenNames.HOME_TABS]: {
+        path: 'home',
+        screens: {
+          [ScreenNames.HOME]: 'feed',
+          [ScreenNames.FORTY_DAY]: 'forty-day',
+          [ScreenNames.BOOKMARK]: 'bookmarks',
+        },
+      },
+    },
+  },
+};
 
-export function Navigation() {
+export function Navigation(props?: any) {
+  const { isAuthenticated } = useAuthStore();
+  const navigationRef = useNavigationContainerRef();
+
+  // Determine initial route based on authentication status
+  const initialRouteName = isAuthenticated ? ScreenNames.HOME_TABS : ScreenNames.WELCOME;
+
   return (
-    <NavigationContainer>
-      <RootStack />
+    <NavigationContainer ref={navigationRef} linking={linking} {...props}>
+      <RootStack initialRouteName={initialRouteName} />
     </NavigationContainer>
   );
 }
-
-Navigation.displayName = 'Navigation';

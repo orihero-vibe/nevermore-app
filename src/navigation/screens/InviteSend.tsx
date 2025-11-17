@@ -5,10 +5,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  ImageBackground,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import {
+  Canvas,
+  Image as SkiaImage,
+  useImage
+} from '@shopify/react-native-skia';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import PlusIcon from '../../assets/icons/plus';
 import { Button } from '../../components/Button';
@@ -19,6 +24,10 @@ import { ScreenNames } from '../../constants/ScreenNames';
 export function InviteSend() {
   const navigation = useNavigation();
   const [emails, setEmails] = useState<string[]>(['', '']);
+  
+  const width = Dimensions.get('window').width;
+  const height = Dimensions.get('window').height;
+  const bg = useImage(require('../../assets/gradient.png'));
 
   const handleEmailChange = (index: number, value: string) => {
     const newEmails = [...emails];
@@ -59,14 +68,12 @@ export function InviteSend() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <ImageBackground
-        source={require('../../assets/splash-bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={styles.safeArea}>
-          {/* Header */}
-          <View style={styles.header}>
+      <Canvas style={styles.canvas}>
+        <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
+      </Canvas>
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <ArrowLeftIcon />
             </TouchableOpacity>
@@ -137,7 +144,6 @@ export function InviteSend() {
             />
           </View>
         </SafeAreaView>
-      </ImageBackground>
     </View>
   );
 }
@@ -147,10 +153,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+  canvas: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   safeArea: {
     flex: 1,

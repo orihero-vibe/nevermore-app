@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { DrawerActions } from '@react-navigation/native';
@@ -19,6 +20,7 @@ import SignOutIcon from '../assets/icons/sign-out';
 import ChevronUpIcon from '../assets/icons/chevron-up';
 import ChevronDownIcon from '../assets/icons/chevron-down';
 import { ScreenNames } from '../constants/ScreenNames';
+import { useAuthStore } from '../store/authStore';
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -66,13 +68,13 @@ export const CustomDrawerContent = (props: any) => {
   const { navigation } = props;
   const insets = useSafeAreaInsets();
   const [legalExpanded, setLegalExpanded] = useState(false);
+  const { signOut } = useAuthStore();
 
   const handleCloseDrawer = () => {
     navigation.dispatch(DrawerActions.closeDrawer());
   };
 
   const handleAccountSettings = () => {
-    // Navigate to account settings
     navigation.navigate(ScreenNames.PROFILE);
     navigation.dispatch(DrawerActions.closeDrawer());
   };
@@ -102,12 +104,33 @@ export const CustomDrawerContent = (props: any) => {
   };
 
   const handleSignOut = () => {
-    navigation.dispatch(DrawerActions.closeDrawer());
-    // Reset navigation stack and navigate to Welcome screen
-    navigation.reset({
-      index: 0,
-      routes: [{ name: ScreenNames.WELCOME }],
-    });
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              navigation.dispatch(DrawerActions.closeDrawer());
+              await signOut();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: ScreenNames.WELCOME }],
+              });
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -117,7 +140,6 @@ export const CustomDrawerContent = (props: any) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 60) }]}>
           <TouchableOpacity
             style={styles.backButton}
@@ -128,7 +150,6 @@ export const CustomDrawerContent = (props: any) => {
           <Text style={styles.headerTitle}>MENU</Text>
         </View>
 
-        {/* Menu Items */}
         <View style={styles.menuContainer}>
           <MenuItem
             icon={<AccountIcon color="#fff" width={24} height={24} />}

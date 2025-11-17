@@ -5,28 +5,44 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  ImageBackground,
   Image,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import {
+  Canvas,
+  Image as SkiaImage,
+  useImage
+} from '@shopify/react-native-skia';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import CheckIcon from '../../assets/icons/check';
 import { Button } from '../../components/Button';
 import { ScreenNames } from '../../constants/ScreenNames';
+import { usePurpose } from '../../hooks/usePurpose';
 
 type PurposeType = 'seek-help' | 'help-someone';
 
 export function Purpose() {
   const navigation = useNavigation();
   const [selectedPurpose, setSelectedPurpose] = useState<PurposeType | null>(null);
+  const { savePurpose } = usePurpose();
+  
+  const width = Dimensions.get('window').width;
+  const height = Dimensions.get('window').height;
+  const bg = useImage(require('../../assets/gradient.png'));
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (selectedPurpose) {
-      // TODO: Store user's purpose selection and navigate to next screen
-      console.log('Selected purpose:', selectedPurpose);
-      // Navigate to nickname screen
-      navigation.navigate(ScreenNames.NICKNAME);
+      try {
+        await savePurpose(selectedPurpose);
+        console.log('Selected purpose:', selectedPurpose);
+        
+        (navigation as any).navigate(ScreenNames.NICKNAME);
+      } catch (error) {
+        console.error('Error saving purpose:', error);
+      }
     }
   };
 
@@ -37,13 +53,10 @@ export function Purpose() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <ImageBackground
-        source={require('../../assets/splash-bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={styles.safeArea}>
-          {/* Header */}
+      <Canvas style={styles.canvas}>
+        <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
+      </Canvas>
+      <SafeAreaView style={styles.safeArea}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <ArrowLeftIcon />
@@ -52,16 +65,18 @@ export function Purpose() {
             <View style={styles.headerSpacer} />
           </View>
 
-          {/* Main Content */}
-          <View style={styles.content}>
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.content}>
             <Text style={styles.title}>WHAT BRINGS YOU HERE?</Text>
             <Text style={styles.description}>
               Let us know if you're on your own path to sobriety, or here to support someone else on theirs. Either way, you're in the right place.
             </Text>
 
-            {/* Purpose Selection Cards */}
             <View style={styles.cardsContainer}>
-              {/* Seek Help Card */}
               <TouchableOpacity
                 style={[
                   styles.purposeCard,
@@ -70,10 +85,11 @@ export function Purpose() {
                 onPress={() => handlePurposeSelect('seek-help')}
               >
                 <Image
-                  source={require('../../assets/purpose1.png')}
+                  source={require('../../assets/patient-bg.png')}
                   style={styles.cardImage}
                   resizeMode="cover"
                 />
+                <Text style={styles.cardText}>I AM HERE TO{'\n'}SEEK HELP</Text>
                 {selectedPurpose === 'seek-help' && (
                   <View style={styles.checkmarkContainer}>
                     <CheckIcon />
@@ -81,19 +97,20 @@ export function Purpose() {
                 )}
               </TouchableOpacity>
 
-              {/* Help Someone Card */}
               <TouchableOpacity
                 style={[
                   styles.purposeCard,
+                  styles.purposeCardLast,
                   selectedPurpose === 'help-someone' && styles.selectedCard
                 ]}
                 onPress={() => handlePurposeSelect('help-someone')}
               >
                 <Image
-                  source={require('../../assets/purpose2.png')}
+                  source={require('../../assets/coach-bg.png')}
                   style={styles.cardImage}
                   resizeMode="cover"
                 />
+                <Text style={styles.cardText}>I AM HERE TO{'\n'}HELP SOMEONE</Text>
                 {selectedPurpose === 'help-someone' && (
                   <View style={styles.checkmarkContainer}>
                     <CheckIcon />
@@ -102,8 +119,8 @@ export function Purpose() {
               </TouchableOpacity>
             </View>
           </View>
+          </ScrollView>
 
-          {/* Next Button */}
           <View style={styles.buttonContainer}>
             <Button
               title="Next"
@@ -114,7 +131,6 @@ export function Purpose() {
             />
           </View>
         </SafeAreaView>
-      </ImageBackground>
     </View>
   );
 }
@@ -124,10 +140,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+  canvas: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   safeArea: {
     flex: 1,
@@ -138,6 +156,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   headerTitle: {
     fontSize: 18,
@@ -179,6 +203,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
+  purposeCardLast: {
+    marginBottom: 20,
+  },
   selectedCard: {
     borderColor: '#8b5cf6',
   },
@@ -196,12 +223,14 @@ const styles = StyleSheet.create({
     top: '50%',
     left: 0,
     right: 0,
-    transform: [{ translateY: -20 }],
-    fontSize: 18,
+    transform: [{ translateY: -25 }],
+    fontSize: 20,
     color: '#ffffff',
-    fontFamily: 'Roboto_700Bold',
+    fontFamily: 'Cinzel_600SemiBold',
     textAlign: 'center',
     zIndex: 2,
+    letterSpacing: 1,
+    lineHeight: 30,
   },
   checkmarkContainer: {
     position: 'absolute',

@@ -1,64 +1,104 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { contentService, Content } from '../services/content.service';
 
 export interface Task {
   id: string;
   title: string;
   subtitle: string;
   completed: boolean;
+  contentId?: string;
+  audioUrl?: string;
+  duration?: number;
 }
 
 export interface DayData {
   day: number;
   completionPercentage: number;
   tasks: Task[];
+  audioUrl?: string;
 }
 
 interface FortyDayState {
   currentDay: number;
   days: DayData[];
+  loading: boolean;
+  error: string | null;
   setCurrentDay: (day: number) => void;
+  setDays: (days: DayData[]) => void;
   toggleTask: (day: number, taskId: string) => void;
+  getCompletedTasks: () => Record<string, boolean>;
   resetProgress: () => void;
+  clearProgress: () => void;
+  loadFortyDayContent: () => Promise<void>;
 }
 
-// Generate mock data for 40 days
-const generateMockDays = (): DayData[] => {
-  const days: DayData[] = [];
-  
-  for (let i = 1; i <= 40; i++) {
-    const tasks: Task[] = [
-      { id: 'read-book', title: 'Read a book', subtitle: 'Information', completed: i <= 2 },
-      { id: 'check-in', title: `Day ${i} Check-in`, subtitle: 'Log your day', completed: i <= 1 },
-      { id: 'listen', title: 'You should listen to this', subtitle: 'Information', completed: false },
-      { id: 'exercise', title: 'Exercise', subtitle: 'Go for a walk', completed: i <= 3 },
-      { id: 'meditate', title: 'Meditate', subtitle: 'Inner peace', completed: i <= 1 },
-    ];
-    
-    const completedTasks = tasks.filter(task => task.completed).length;
-    const completionPercentage = Math.round((completedTasks / tasks.length) * 100);
-    
-    days.push({
-      day: i,
-      completionPercentage,
-      tasks,
+const convertContentToTasks = (content: Content): Task[] => {
+  const tasks: Task[] = [];
+
+  if (Array.isArray(content.tasks)) {
+    return content.tasks.map((taskString, index) => {
+      try {
+        const taskObj = typeof taskString === 'string' ? JSON.parse(taskString) : taskString;
+        
+        const taskId = taskObj.id || taskObj.$id || `task-${index}`;
+        
+        return {
+          id: taskId,
+          title: taskObj.title || `Task ${index + 1}`,
+          subtitle: taskObj.subtitle || taskObj.type || '',
+          completed: false,
+          contentId: taskObj.contentId,
+          audioUrl: taskObj.audioUrl,
+          duration: taskObj.duration,
+        };
+      } catch (error) {
+        return {
+          id: `task-${index}`,
+          title: typeof taskString === 'string' ? taskString : `Task ${index + 1}`,
+          subtitle: '',
+          completed: false,
+        };
+      }
     });
   }
-  
-  return days;
+
+  return tasks;
 };
 
 export const useFortyDayStore = create<FortyDayState>()(
   persist(
     (set, get) => ({
-      currentDay: 2, // Start at day 2 as shown in screenshot
-      days: generateMockDays(),
+      currentDay: 1,
+      days: [],
+      loading: false,
+      error: null,
       
       setCurrentDay: (day: number) => {
         if (day >= 1 && day <= 40) {
           set({ currentDay: day });
         }
+      },
+
+      setDays: (days: DayData[]) => {
+        set({ days });
+      },
+
+      getCompletedTasks: () => {
+        const state = get();
+        const completedTasks: Record<string, boolean> = {};
+        
+        state.days.forEach((day) => {
+          day.tasks.forEach((task) => {
+            if (task.completed) {
+              const taskKey = `day-${day.day}-task-${task.id}`;
+              completedTasks[taskKey] = true;
+            }
+          });
+        });
+        
+        return completedTasks;
       },
       
       toggleTask: (day: number, taskId: string) => {
@@ -69,7 +109,9 @@ export const useFortyDayStore = create<FortyDayState>()(
                 task.id === taskId ? { ...task, completed: !task.completed } : task
               );
               const completedTasks = updatedTasks.filter(task => task.completed).length;
-              const completionPercentage = Math.round((completedTasks / updatedTasks.length) * 100);
+              const completionPercentage = updatedTasks.length > 0 
+                ? Math.round((completedTasks / updatedTasks.length) * 100)
+                : 0;
               
               return {
                 ...d,
@@ -85,8 +127,106 @@ export const useFortyDayStore = create<FortyDayState>()(
       resetProgress: () => {
         set({
           currentDay: 1,
-          days: generateMockDays(),
+          days: [],
+          error: null,
         });
+        get().loadFortyDayContent();
+      },
+
+      clearProgress: () => {
+        set({
+          currentDay: 1,
+          days: [],
+          error: null,
+        });
+      },
+
+      loadFortyDayContent: async () => {
+        set({ loading: true, error: null });
+        
+        try {
+          const fortyDayContent = await contentService.getFortyDayContent();
+          
+          console.log(`Loaded ${fortyDayContent.length} forty day journey items`);
+          
+          if (fortyDayContent.length === 0) {
+            set({ 
+              loading: false, 
+              error: 'No 40-day journey content found. Please add content with type "forty_day_journey".',
+            });
+            return;
+          }
+          
+          const sortedContent = [...fortyDayContent].sort((a, b) => {
+            if (a.day !== undefined && b.day !== undefined) {
+              return Number(a.day) - Number(b.day);
+            }
+            if (a.$createdAt && b.$createdAt) {
+              return new Date(a.$createdAt).getTime() - new Date(b.$createdAt).getTime();
+            }
+            return (a.title || '').localeCompare(b.title || '');
+          });
+          
+          const currentState = get();
+          const existingCompletedTasks = currentState.getCompletedTasks();
+          
+          const days: DayData[] = sortedContent.map((content, index) => {
+            const dayNumber = content.day !== undefined && content.day !== null 
+              ? Number(content.day) 
+              : index + 1;
+            
+            const tasks = convertContentToTasks(content);
+            
+            tasks.forEach((task) => {
+              const taskKey = `day-${dayNumber}-task-${task.id}`;
+              if (existingCompletedTasks[taskKey]) {
+                task.completed = true;
+              }
+            });
+            
+            const completedTasks = tasks.filter(task => task.completed).length;
+            const completionPercentage = tasks.length > 0
+              ? Math.round((completedTasks / tasks.length) * 100)
+              : 0;
+            
+            const audioUrl = content.files && Array.isArray(content.files) && content.files.length > 0
+              ? content.files[0]
+              : undefined;
+            
+            return {
+              day: dayNumber,
+              completionPercentage,
+              tasks,
+              audioUrl,
+            };
+          });
+          
+          console.log('Generated days data:', {
+            totalDays: days.length,
+            sampleDay: days[0],
+            dayNumber: days[0]?.day,
+            totalTasks: days[0]?.tasks.length,
+            hasAudio: !!days[0]?.audioUrl,
+          });
+          
+          set({ 
+            days, 
+            loading: false,
+            error: null,
+          });
+          
+        } catch (error) {
+          const errorMessage = error instanceof Error 
+            ? error.message 
+            : 'Failed to load forty day content';
+          
+          console.error('Error loading forty day content:', error);
+          
+          set({ 
+            loading: false, 
+            error: errorMessage,
+          });
+        }
       },
     }),
     {

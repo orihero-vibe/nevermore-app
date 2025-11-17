@@ -29,6 +29,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MenuIcon from '../../assets/icons/menu';
 import { TemptationBottomSheet } from '../../components/TemptationBottomSheet';
 import { ScreenNames } from '../../constants/ScreenNames';
+import { useCategories } from '../../hooks/useCategories';
+import { useContent } from '../../hooks/useContent';
+import type { Category } from '../../services/category.service';
 
 interface TemptationItem {
   id: string;
@@ -38,7 +41,9 @@ interface TemptationItem {
 
 type RootStackParamList = {
   TemptationDetails: {
+    contentId: string;
     temptationTitle: string;
+    categoryId?: string;
   };
 };
 
@@ -46,95 +51,74 @@ type HomeNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function Home() {
   const navigation = useNavigation<HomeNavigationProp>();
-  const categories = [
-    "Physical Health & Medical Avoidance",
-    "Emotional & Psychological Triggers",
-    "Social & Relationship Dynamics",
-    "Cultural & Societal Influences",
-    "Financial & Lifestyle Impacts",
-  ];
+  const { categories, loading, error, getCategoryName } = useCategories();
+  const { content: allContent, loading: contentLoading } = useContent();
 
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedTemptation, setSelectedTemptation] = useState<string>('');
-  
-  // Reanimated shared values for canvas animations
+  const [categoryContent, setCategoryContent] = useState<Record<string, TemptationItem[]>>({});
   const canvasTranslateY = useSharedValue(50);
   const canvasOpacity = useSharedValue(0);
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-30);
-  
-  // Shared values for category card animations
-  const categoryScales = useSharedValue(categories.map(() => 1));
-  const categoryOpacities = useSharedValue(categories.map(() => 0));
-  const [categoryTemptations, setCategoryTemptations] = useState<Record<string, TemptationItem[]>>({
-    "Physical Health & Medical Avoidance": [
-      { id: '1', title: 'Avoiding the Doctor', selected: true },
-      { id: '2', title: 'Fear of Withdrawal' },
-      { id: '3', title: 'Relapse' },
-      { id: '4', title: 'Self Diagnosing' },
-      { id: '5', title: 'Self Medicating' },
-      { id: '6', title: 'Subsituting' },
-    ],
-    "Emotional & Psychological Triggers": [
-      { id: '7', title: 'Stress Eating', selected: true },
-      { id: '8', title: 'Emotional Numbing' },
-      { id: '9', title: 'Anxiety Avoidance' },
-      { id: '10', title: 'Depression Coping' },
-      { id: '11', title: 'Anger Management' },
-      { id: '12', title: 'Loneliness' },
-    ],
-    "Social & Relationship Dynamics": [
-      { id: '13', title: 'Peer Pressure', selected: true },
-      { id: '14', title: 'Social Anxiety' },
-      { id: '15', title: 'Relationship Conflicts' },
-      { id: '16', title: 'Family Expectations' },
-      { id: '17', title: 'Social Isolation' },
-      { id: '18', title: 'Group Dynamics' },
-    ],
-    "Cultural & Societal Influences": [
-      { id: '19', title: 'Cultural Norms', selected: true },
-      { id: '20', title: 'Media Influence' },
-      { id: '21', title: 'Social Media Pressure' },
-      { id: '22', title: 'Celebration Culture' },
-      { id: '23', title: 'Workplace Culture' },
-      { id: '24', title: 'Religious Expectations' },
-    ],
-    "Financial & Lifestyle Impacts": [
-      { id: '25', title: 'Financial Stress', selected: true },
-      { id: '26', title: 'Work Pressure' },
-      { id: '27', title: 'Lifestyle Changes' },
-      { id: '28', title: 'Economic Anxiety' },
-      { id: '29', title: 'Consumer Culture' },
-      { id: '30', title: 'Social Status' },
-    ],
-  });
+  const categoryScales = useSharedValue<number[]>([]);
+  const categoryOpacities = useSharedValue<number[]>([]);
 
-  const handleCategoryPress = (category: string, index: number) => {
-    // Simple press animation without bouncing
+  useEffect(() => {
+    if (allContent.length === 0 || categories.length === 0) return;
+
+    const contentByCategory: Record<string, TemptationItem[]> = {};
+
+    categories.forEach((category) => {
+      const categoryItems = allContent
+        .filter((item) => {
+          const categoryId = typeof item.category === 'string' 
+            ? item.category 
+            : item.category?.$id;
+          return categoryId === category.$id;
+        })
+        .map((item, index) => ({
+          id: item.$id,
+          title: item.title,
+          selected: index === 0,
+        }));
+
+      const categoryName = getCategoryName(category);
+      contentByCategory[categoryName] = categoryItems;
+    });
+
+    setCategoryContent(contentByCategory);
+  }, [allContent, categories, getCategoryName]);
+
+  const handleCategoryPress = (category: Category, index: number) => {
     categoryScales.value[index] = withTiming(0.98, { duration: 100 }, () => {
       categoryScales.value[index] = withTiming(1, { duration: 100 });
     });
     
-    // Use runOnJS for state updates to avoid bridge calls
     runOnJS(setSelectedCategory)(category);
     runOnJS(setBottomSheetVisible)(true);
   };
 
   const handleTemptationSelect = (item: TemptationItem) => {
     setSelectedTemptation(item.title);
-    // Update the selected state for the item using setState
-    setCategoryTemptations(prev => ({
+    
+    if (!selectedCategory) return;
+    const categoryName = getCategoryName(selectedCategory);
+    
+    setCategoryContent(prev => ({
       ...prev,
-      [selectedCategory]: prev[selectedCategory].map(t => 
+      [categoryName]: prev[categoryName]?.map(t => 
         t.id === item.id ? { ...t, selected: true } : { ...t, selected: false }
-      )
+      ) || []
     }));
   };
 
   const handleNavigateToDetails = (item: TemptationItem) => {
     navigation.navigate(ScreenNames.TEMPTATION_DETAILS, {
+      contentId: item.id,
       temptationTitle: item.title,
+      categoryId: selectedCategory?.$id || '',
     });
   };
 
@@ -142,18 +126,22 @@ export default function Home() {
     setBottomSheetVisible(false);
   };
 
-  // Animate components on mount with Reanimated
   useEffect(() => {
+    if (categories.length > 0) {
+      categoryScales.value = categories.map(() => 1);
+      categoryOpacities.value = categories.map(() => 0);
+    }
+  }, [categories]);
+
+  useEffect(() => {
+    if (categories.length === 0 || loading) return;
+
     const animateComponents = () => {
-      // Header animation - smooth without bouncing
       headerOpacity.value = withTiming(1, { duration: 600 });
       headerTranslateY.value = withTiming(0, { duration: 600 });
-      
-      // Canvas animation with delay - smooth without bouncing
       canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
       canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
       
-      // Staggered category animations - smooth without bouncing
       categories.forEach((_, index) => {
         const delay = 400 + (index * 150);
         categoryOpacities.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
@@ -161,10 +149,9 @@ export default function Home() {
       });
     };
 
-    // Start animation after fonts are loaded
     const timer = setTimeout(animateComponents, 300);
     return () => clearTimeout(timer);
-  }, []);
+  }, [categories, loading]);
 
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/main-bg.png'));
@@ -173,7 +160,6 @@ export default function Home() {
   const categoryFont = useFont(Cinzel_400Regular, 12);
   const insets = useSafeAreaInsets();
 
-  // Animated styles for header
   const headerAnimatedStyle = useAnimatedStyle(() => {
     return {
       opacity: headerOpacity.value,
@@ -181,7 +167,6 @@ export default function Home() {
     };
   });
 
-  // Animated styles for canvas
   const canvasAnimatedStyle = useAnimatedStyle(() => {
     return {
       opacity: canvasOpacity.value,
@@ -190,8 +175,7 @@ export default function Home() {
   });
 
   return (
-    <View style={[styles.container,]}>
-      {/* Header */}
+    <View style={styles.container}>
       <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
         <TouchableOpacity 
           style={styles.menuButton}
@@ -209,7 +193,6 @@ export default function Home() {
           activeOpacity={1}
           onPress={(event) => {
             const { locationY } = event.nativeEvent;
-            // Calculate which category was tapped based on Y position
             const categoryIndex = Math.floor((locationY - 200) / 90);
             if (categoryIndex >= 0 && categoryIndex < categories.length) {
               handleCategoryPress(categories[categoryIndex], categoryIndex);
@@ -217,80 +200,74 @@ export default function Home() {
           }}
         >
           <Canvas style={styles.canvas}>
-        {/* Background Image */}
-        <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
+            <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
 
-        {/* Main Title */}
-        <SkiaText
-          text="40 TEMPTATIONS"
-          font={headerText}
-          color="white"
-          x={width / 2 - 175}
-          y={150}
-        />
+            <SkiaText
+              text="40 TEMPTATIONS"
+              font={headerText}
+              color="white"
+              x={width / 2 - 175}
+              y={150}
+            />
 
-        {/* Glassmorphic Cards - visible static colors to ensure text renders */}
-        {categories.map((cat, i) => {
-          const top = 200 + i * 90;
-          const cardHeight = 70;
-          const cardWidth = width - 60;
-          const chevronX = 30 + cardWidth - 25;
-          const chevronY = top + cardHeight / 2;
+            {categories.map((cat, i) => {
+              const top = 200 + i * 90;
+              const cardHeight = 70;
+              const cardWidth = width - 60;
+              const chevronX = 30 + cardWidth - 25;
+              const chevronY = top + cardHeight / 2;
 
-          return (
-            <BackdropFilter
-              key={i}
-              filter={<Blur blur={5} />}
-              clip={rrect({ x: 30, y: top, width: cardWidth, height: cardHeight }, 12, 12)}
-            >
-              <Rect
-                x={30}
-                y={top}
-                width={cardWidth}
-                height={cardHeight}
-                color={'rgba(255,255,255,0.1)'}
-              />
-              <SkiaText
-                x={60}
-                y={top + cardHeight / 2 + 6}
-                text={cat}
-                color={'white'}
-                font={categoryFont}
-              />
+              return (
+                <BackdropFilter
+                  key={cat.$id}
+                  filter={<Blur blur={5} />}
+                  clip={rrect({ x: 30, y: top, width: cardWidth, height: cardHeight }, 12, 12)}
+                >
+                  <Rect
+                    x={30}
+                    y={top}
+                    width={cardWidth}
+                    height={cardHeight}
+                    color={'rgba(255,255,255,0.1)'}
+                  />
+                  <SkiaText
+                    x={60}
+                    y={top + cardHeight / 2 + 6}
+                    text={getCategoryName(cat)}
+                    color={'white'}
+                    font={categoryFont}
+                  />
 
-              {/* Chevron Background Circle */}
-              <BackdropFilter
-                filter={<Blur blur={5} />}
-                clip={rrect({ x: chevronX - 12, y: chevronY - 12, width: 24, height: 24 }, 12, 12)}
-              >
-                <Circle
-                  cx={chevronX}
-                  cy={chevronY}
-                  r={12}
-                  color={'rgba(255,255,255,0.2)'}
-                />
-              </BackdropFilter>
+                  <BackdropFilter
+                    filter={<Blur blur={5} />}
+                    clip={rrect({ x: chevronX - 12, y: chevronY - 12, width: 24, height: 24 }, 12, 12)}
+                  >
+                    <Circle
+                      cx={chevronX}
+                      cy={chevronY}
+                      r={12}
+                      color={'rgba(255,255,255,0.2)'}
+                    />
+                  </BackdropFilter>
 
-              {/* Chevron Down Icon */}
-              <Path
-                path={`M ${chevronX - 4} ${chevronY - 2} L ${chevronX} ${chevronY + 2} L ${chevronX + 4} ${chevronY - 2}`}
-                color={'white'}
-                style="stroke"
-                strokeWidth={1.5}
-              />
-            </BackdropFilter>
-          );
-        })}
-        </Canvas>
+                  <Path
+                    path={`M ${chevronX - 4} ${chevronY - 2} L ${chevronX} ${chevronY + 2} L ${chevronX + 4} ${chevronY - 2}`}
+                    color={'white'}
+                    style="stroke"
+                    strokeWidth={1.5}
+                  />
+                </BackdropFilter>
+              );
+            })}
+          </Canvas>
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Temptation Bottom Sheet */}
       <TemptationBottomSheet
         isVisible={bottomSheetVisible}
         onClose={handleCloseBottomSheet}
-        title={selectedCategory}
-        items={selectedCategory ? categoryTemptations[selectedCategory] : []}
+        title={selectedCategory ? getCategoryName(selectedCategory) : ''}
+        items={selectedCategory ? categoryContent[getCategoryName(selectedCategory)] || [] : []}
         onItemSelect={handleTemptationSelect}
         onNavigate={handleNavigateToDetails}
       />

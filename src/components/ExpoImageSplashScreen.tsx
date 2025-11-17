@@ -54,15 +54,16 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     backgroundColor: 'rgba(45, 27, 105, 0.3)',
     zIndex: 1,
+    paddingBottom: 200,
   },
   title: {
     fontSize: 48,
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontFamily: 'Cinzel_400Regular',
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 2, height: 2 },

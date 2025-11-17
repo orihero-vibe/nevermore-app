@@ -6,26 +6,32 @@ export interface Bookmark {
   id: string;
   title: string;
   timestamp: number;
+  role?: string; // Role field from content (Recovery/Support)
 }
 
 interface BookmarkState {
   bookmarks: Bookmark[];
-  addBookmark: (id: string, title: string) => void;
+  activeTab: 'Recovery' | 'Support';
+  addBookmark: (id: string, title: string, role?: string) => void;
   removeBookmark: (id: string) => void;
   isBookmarked: (id: string) => boolean;
-  toggleBookmark: (id: string, title: string) => void;
+  toggleBookmark: (id: string, title: string, role?: string) => void;
+  clearBookmarks: () => void;
+  setActiveTab: (tab: 'Recovery' | 'Support') => void;
+  getFilteredBookmarks: (tab?: 'Recovery' | 'Support') => Bookmark[];
 }
 
 export const useBookmarkStore = create<BookmarkState>()(
   persist(
     (set, get) => ({
       bookmarks: [],
+      activeTab: 'Recovery',
       
-      addBookmark: (id: string, title: string) => {
+      addBookmark: (id: string, title: string, role?: string) => {
         set((state) => ({
           bookmarks: [
             ...state.bookmarks,
-            { id, title, timestamp: Date.now() }
+            { id, title, timestamp: Date.now(), role }
           ]
         }));
       },
@@ -40,13 +46,30 @@ export const useBookmarkStore = create<BookmarkState>()(
         return get().bookmarks.some(bookmark => bookmark.id === id);
       },
       
-      toggleBookmark: (id: string, title: string) => {
+      toggleBookmark: (id: string, title: string, role?: string) => {
         const state = get();
         if (state.isBookmarked(id)) {
           state.removeBookmark(id);
         } else {
-          state.addBookmark(id, title);
+          state.addBookmark(id, title, role);
         }
+      },
+      
+      clearBookmarks: () => {
+        set({ bookmarks: [] });
+      },
+
+      setActiveTab: (tab: 'Recovery' | 'Support') => {
+        set({ activeTab: tab });
+      },
+
+      getFilteredBookmarks: (tab?: 'Recovery' | 'Support') => {
+        const state = get();
+        const activeTab = tab || state.activeTab;
+        const filtered = state.bookmarks.filter(bookmark => {
+          return !bookmark.role || bookmark.role.toLowerCase() === activeTab.toLowerCase();
+        });
+        return filtered;
       },
     }),
     {
@@ -55,4 +78,3 @@ export const useBookmarkStore = create<BookmarkState>()(
     }
   )
 );
-

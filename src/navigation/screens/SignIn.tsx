@@ -10,32 +10,45 @@ import {
   ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import CheckIcon from '../../assets/icons/check';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { PasswordInput } from '../../components/PasswordInput';
-import { ScreenNames } from '../../constants/ScreenNames';
+import { useSignIn } from '../../hooks/useSignIn';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 
 export function SignIn() {
-  const navigation = useNavigation();
+  const { goBack, navigateToHome, navigateToForgotPassword, navigateToSignUp } = useAppNavigation();
+  const { isLoading, handleSignIn: signInUser } = useSignIn();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const handleSignIn = () => {
-    // TODO: Implement sign in logic
-    // For now, navigate to main app
-    navigation.navigate(ScreenNames.HOME_TABS);
+  
+  const handleSignIn = async () => {
+    await signInUser(
+      {
+        email,
+        password,
+        rememberMe,
+      },
+      {
+        onSuccess: navigateToHome,
+        onError: (error) => {
+          console.error('Sign in failed:', error);
+        },
+      }
+    );
   };
 
   const handleForgotPassword = () => {
-    navigation.navigate(ScreenNames.FORGOT_PASSWORD);
+    navigateToForgotPassword();
   };
 
   const handleSignUp = () => {
-    navigation.navigate(ScreenNames.SIGN_UP);
+    navigateToSignUp();
   };
 
   return (
@@ -51,20 +64,17 @@ export function SignIn() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardAvoidingView}
           >
-            {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
+                <TouchableOpacity onPress={goBack}>
                   <ArrowLeftIcon />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>Nevermore</Text>
               <View style={styles.headerSpacer} />
             </View>
 
-            {/* Main Content */}
             <View style={styles.content}>
               <Text style={styles.title}>SIGN IN</Text>
 
-              {/* Email Field */}
               <Input
                 label="Email"
                 placeholder="Enter Email"
@@ -73,9 +83,10 @@ export function SignIn() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                textContentType="username"
+                autoComplete="email"
               />
 
-              {/* Password Field */}
               <PasswordInput
                 label="Password"
                 placeholder="Enter password"
@@ -85,9 +96,10 @@ export function SignIn() {
                 onTogglePassword={() => setShowPassword(!showPassword)}
                 autoCapitalize="none"
                 autoCorrect={false}
+                textContentType="password"
+                autoComplete="password"
               />
 
-              {/* Remember Me and Forgot Password */}
               <View style={styles.optionsContainer}>
                 <TouchableOpacity
                   style={styles.rememberMeContainer}
@@ -106,16 +118,15 @@ export function SignIn() {
                 </TouchableOpacity>
               </View>
 
-              {/* Sign In Button */}
               <Button
-                title="Sign In"
+                title={isLoading ? "Signing In..." : "Sign In"}
                 onPress={handleSignIn}
                 variant="primary"
                 size="medium"
+                disabled={isLoading}
                 style={styles.signInButton}
               />
 
-              {/* Sign Up Link */}
               <View style={styles.signUpContainer}>
                 <Text style={styles.signUpText}>Don't have an account? </Text>
                 <TouchableOpacity onPress={handleSignUp}>

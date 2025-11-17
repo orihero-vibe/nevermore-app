@@ -10,29 +10,27 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
-import { ScreenNames } from '../../constants/ScreenNames';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
+import { useSignIn } from '../../hooks/useSignIn';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 
 export const ForgotPassword: React.FC = () => {
-  const navigation = useNavigation();
-  const [email, setEmail] = useState('Mary.Langston@email.com');
-  const [isLoading, setIsLoading] = useState(false);
+  const { goBack } = useAppNavigation();
+  const { isLoading, handlePasswordRecovery } = useSignIn();
+  const [email, setEmail] = useState('');
 
   const handleNext = async () => {
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Navigate to CreateNewPassword screen
-      navigation.navigate(ScreenNames.CREATE_NEW_PASSWORD);
-    }, 1000);
-  };
-
-  const handleBack = () => {
-    navigation.goBack();
+    await handlePasswordRecovery(
+      email,
+      {
+        onSuccess: () => goBack(),
+        onError: (error) => {
+          console.error('Password recovery failed:', error);
+        },
+      }
+    );
   };
 
   return (
@@ -48,16 +46,14 @@ export const ForgotPassword: React.FC = () => {
             style={styles.keyboardAvoidingView}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
-        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <TouchableOpacity onPress={goBack} style={styles.backButton}>
             <ArrowLeftIcon width={24} height={24} color="#ffffff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Nevermore</Text>
           <View style={styles.headerSpacer} />
         </View>
 
-        {/* Main Content */}
         <View style={styles.content}>
           <Text style={styles.title}>FORGOT YOUR PASSWORD?</Text>
           
@@ -77,7 +73,7 @@ export const ForgotPassword: React.FC = () => {
           <Button
             title="Next"
             onPress={handleNext}
-            loading={isLoading}
+            disabled={isLoading}
             style={styles.nextButton}
             size="large"
           />
@@ -111,20 +107,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2d1b4e',
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#ffffff',
     fontFamily: 'Roboto_500Medium',
   },
   headerSpacer: {
-    width: 40, // Same width as back button to center the title
+    width: 40,
   },
   content: {
     flex: 1,
@@ -133,12 +126,10 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
     color: '#ffffff',
     textAlign: 'center',
     marginBottom: 20,
     fontFamily: 'Roboto_700Bold',
-    letterSpacing: 0.5,
   },
   instructionText: {
     fontSize: 16,

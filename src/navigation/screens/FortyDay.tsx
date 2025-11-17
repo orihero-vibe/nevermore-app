@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Dimensions,
   ScrollView,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
@@ -19,11 +20,13 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useFortyDayStore } from '../../store/fortyDayStore';
+import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import MenuIcon from '../../assets/icons/menu';
 import FlagIcon from '../../assets/icons/flag';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
 import ChevronRightIcon from '../../assets/icons/chevron-right';
 import PlayIcon from '../../assets/icons/play';
+import PauseIcon from '../../assets/icons/pause';
 import VolumeIcon from '../../assets/icons/volume';
 import SoundWaveIcon from '../../assets/icons/sound-wave';
 import CheckmarkIcon from '../../assets/icons/checkmark';
@@ -33,9 +36,35 @@ const CARD_WIDTH = SCREEN_WIDTH * 0.7;
 
 export const FortyDay = () => {
   const navigation = useNavigation();
-  const { currentDay, days, setCurrentDay, toggleTask } = useFortyDayStore();
+  
+  const { 
+    currentDay, 
+    days, 
+    loading, 
+    error, 
+    setCurrentDay, 
+    toggleTask, 
+    loadFortyDayContent 
+  } = useFortyDayStore();
+  
   const carouselRef = useRef<any>(null);
   const [activeIndex, setActiveIndex] = useState(currentDay - 1);
+  
+  const audioPlayer = useAudioPlayer();
+
+  useEffect(() => {
+    loadFortyDayContent();
+  }, []);
+
+  useEffect(() => {
+    const currentDayData = days[activeIndex];
+    if (currentDayData?.audioUrl) {
+      console.log('Loading audio for day', currentDayData.day, ':', currentDayData.audioUrl);
+      audioPlayer.loadAudio(currentDayData.audioUrl);
+    } else {
+      audioPlayer.unloadAudio();
+    }
+  }, [activeIndex]);
 
   const currentDayData = days[activeIndex];
 
@@ -56,6 +85,8 @@ export const FortyDay = () => {
   };
 
   const renderCarouselItem = ({ item }: { item: typeof days[0] }) => {
+    const isCurrentItem = item.day === days[activeIndex]?.day;
+    
     return (
       <View style={styles.carouselItemContainer}>
         <BlurView intensity={20} tint="dark" style={styles.card}>
@@ -74,10 +105,27 @@ export const FortyDay = () => {
           </View>
 
           <View style={styles.mediaControls}>
-            <TouchableOpacity style={styles.mediaButton}>
-              <PlayIcon width={20} height={20} />
+            <TouchableOpacity 
+              style={[
+                styles.mediaButton,
+                !item.audioUrl && styles.mediaButtonDisabled
+              ]}
+              onPress={() => isCurrentItem && item.audioUrl && audioPlayer.togglePlayPause()}
+              disabled={!item.audioUrl}
+            >
+              {isCurrentItem && audioPlayer.isPlaying ? (
+                <PauseIcon width={20} height={20} />
+              ) : (
+                <PlayIcon width={20} height={20} />
+              )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.mediaButton}>
+            <TouchableOpacity 
+              style={[
+                styles.mediaButton,
+                !item.audioUrl && styles.mediaButtonDisabled
+              ]}
+              disabled={!item.audioUrl}
+            >
               <VolumeIcon width={20} height={20} />
             </TouchableOpacity>
           </View>
@@ -93,7 +141,6 @@ export const FortyDay = () => {
       resizeMode="cover"
     >
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.menuButton}
@@ -105,86 +152,106 @@ export const FortyDay = () => {
         <View style={styles.menuButton} />
       </View>
 
-      {/* Title */}
       <Text style={styles.mainTitle}>40 DAY JOURNEY</Text>
 
-      {/* Carousel Section */}
-      <View style={styles.carouselContainer}>
-        <TouchableOpacity
-          style={[styles.navButton, styles.navButtonLeft]}
-          onPress={handlePrevious}
-          disabled={activeIndex === 0}
-        >
-          <ChevronLeftIcon width={24} height={24} />
-        </TouchableOpacity>
-
-        <View style={styles.carouselWrapper}>
-          <Carousel
-            ref={carouselRef}
-            width={CARD_WIDTH}
-            height={280}
-            data={days}
-            renderItem={renderCarouselItem}
-            onSnapToItem={(index) => {
-              setActiveIndex(index);
-              setCurrentDay(days[index].day);
-            }}
-            defaultIndex={currentDay - 1}
-            loop={false}
-            enabled={true}
-            style={styles.carousel}
-          />
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+          <Text style={styles.loadingText}>Loading your journey...</Text>
         </View>
+      )}
 
-        <TouchableOpacity
-          style={[styles.navButton, styles.navButtonRight]}
-          onPress={handleNext}
-          disabled={activeIndex === 39}
-        >
-          <ChevronRightIcon width={24} height={24} />
-        </TouchableOpacity>
-      </View>
+      {error && !loading && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={loadFortyDayContent}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-      {/* Tasks Section */}
-      <View style={styles.tasksSection}>
-        <Text style={styles.tasksTitle}>Tasks for today</Text>
-        
-        <ScrollView 
-          style={styles.tasksList}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.tasksListContent}
-        >
-          {currentDayData.tasks.map((task, index) => (
-            <Pressable
-              key={task.id}
-              style={[
-                styles.taskItem,
-                task.completed && styles.taskItemCompleted,
-              ]}
-              onPress={() => handleTaskToggle(task.id)}
+      {!loading && !error && (
+        <>
+          <View style={styles.carouselContainer}>
+            <TouchableOpacity
+              style={[styles.navButton, styles.navButtonLeft]}
+              onPress={handlePrevious}
+              disabled={activeIndex === 0}
             >
-              <View style={styles.taskLeft}>
-                <View style={styles.soundWaveContainer}>
-                  <SoundWaveIcon width={32} height={32} />
-                </View>
-                <View style={styles.taskTextContainer}>
-                  <Text style={styles.taskTitle}>{task.title}</Text>
-                  <Text style={styles.taskSubtitle}>{task.subtitle}</Text>
-                </View>
-              </View>
+              <ChevronLeftIcon width={24} height={24} />
+            </TouchableOpacity>
 
-              <View
-                style={[
-                  styles.checkbox,
-                  task.completed && styles.checkboxCompleted,
-                ]}
-              >
-                {task.completed && <CheckmarkIcon width={20} height={20} color="#8B5CF6" />}
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
+            <View style={styles.carouselWrapper}>
+              <Carousel
+                ref={carouselRef}
+                width={CARD_WIDTH}
+                height={280}
+                data={days}
+                renderItem={renderCarouselItem}
+                onSnapToItem={(index) => {
+                  setActiveIndex(index);
+                  setCurrentDay(days[index].day);
+                }}
+                defaultIndex={currentDay - 1}
+                loop={false}
+                enabled={true}
+                style={styles.carousel}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.navButton, styles.navButtonRight]}
+              onPress={handleNext}
+              disabled={activeIndex === 39}
+            >
+              <ChevronRightIcon width={24} height={24} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.tasksSection}>
+            <Text style={styles.tasksTitle}>Tasks for today</Text>
+            
+            <ScrollView 
+              style={styles.tasksList}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.tasksListContent}
+            >
+              {currentDayData?.tasks.map((task, index) => (
+                <Pressable
+                  key={task.id}
+                  style={[
+                    styles.taskItem,
+                    task.completed && styles.taskItemCompleted,
+                  ]}
+                  onPress={() => handleTaskToggle(task.id)}
+                >
+                  <View style={styles.taskLeft}>
+                    <View style={styles.soundWaveContainer}>
+                      <SoundWaveIcon width={32} height={32} />
+                    </View>
+                    <View style={styles.taskTextContainer}>
+                      <Text style={styles.taskTitle}>{task.title}</Text>
+                      {/* <Text style={styles.taskSubtitle}>{task.subtitle}</Text> */}
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.checkbox,
+                      task.completed && styles.checkboxCompleted,
+                    ]}
+                  >
+                    {task.completed && <CheckmarkIcon width={20} height={20} color="#8B5CF6" />}
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </>
+      )}
     </ImageBackground>
   );
 };
@@ -295,13 +362,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Cinzel_900Black',
     fontSize: 96,
     color: '#fff',
-    lineHeight: 96,
+    lineHeight: 115,
     marginBottom: 12,
   },
   completionText: {
     fontFamily: 'Roboto_400Regular',
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.6)',
+    marginBottom: 12,
   },
   completionPercentage: {
     color: '#fff',
@@ -321,6 +389,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  mediaButtonDisabled: {
+    opacity: 0.3,
   },
   tasksSection: {
     flex: 1,
@@ -344,7 +415,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: 'rgba(139, 92, 246, 0.15)',
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(139, 92, 246, 0.3)',
@@ -394,5 +466,42 @@ const styles = StyleSheet.create({
   checkboxCompleted: {
     backgroundColor: '#fff',
     borderColor: '#8B5CF6',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 100,
+  },
+  loadingText: {
+    fontFamily: 'Roboto_400Regular',
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 20,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingBottom: 100,
+  },
+  errorText: {
+    fontFamily: 'Roboto_400Regular',
+    fontSize: 16,
+    color: '#ff6b6b',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    fontFamily: 'Roboto_700Bold',
+    fontSize: 16,
+    color: '#fff',
   },
 });

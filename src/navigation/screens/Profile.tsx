@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect, FC } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StatusBar,
   Alert,
   ImageBackground,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
@@ -15,6 +16,10 @@ import EditIcon from '../../assets/icons/edit';
 import ChevronRightIcon from '../../assets/icons/chevron-right';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenNames } from '../../constants/ScreenNames';
+import { useAuthStore } from '../../store/authStore';
+import { useUserProfile } from '../../hooks/useUserProfile';
+import { EditFieldModal } from '../../components/EditFieldModal';
+import { account } from '../../services/appwrite.config';
 
 interface EditableFieldProps {
   label: string;
@@ -23,7 +28,7 @@ interface EditableFieldProps {
   onEdit: () => void;
 }
 
-const EditableField: React.FC<EditableFieldProps> = ({
+const EditableField: FC<EditableFieldProps> = ({
   label,
   value,
   isPassword = false,
@@ -48,25 +53,191 @@ const EditableField: React.FC<EditableFieldProps> = ({
   );
 };
 
+type EditFieldType = 'nickname' | 'fullName' | 'email' | 'phone' | 'password' | null;
+
 export const Profile: React.FC = () => {
   const navigation = useNavigation();
-  const [nickname, setNickname] = useState('Mary_Langston');
-  const [phoneNumber, setPhoneNumber] = useState('(123) 456 - 7890');
-  const [email, setEmail] = useState('Mary.Langston@email.com');
-  const [password, setPassword] = useState('********');
+  const { user, signOut, deleteAccount } = useAuthStore();
+  const { profile, isLoading, updateProfile, checkNicknameAvailability } = useUserProfile();
+  
+  const [editingField, setEditingField] = useState<EditFieldType>(null);
 
-  const handleEditField = (field: string) => {
-    Alert.alert('Edit Field', `Edit ${field} functionality coming soon`);
+  const handleEditNickname = async (value: string): Promise<boolean> => {
+    return await updateProfile({ nickname: value });
+  };
+
+  const handleEditFullName = async (value: string): Promise<boolean> => {
+    return await updateProfile({ full_name: value });
+  };
+
+  const handleEditPhone = async (value: string): Promise<boolean> => {
+    return await updateProfile({ phone: value });
+  };
+
+  const handleEditEmail = async (value: string): Promise<boolean> => {
+    try {
+      return new Promise((resolve) => {
+        Alert.prompt(
+          'Password Required',
+          'Please enter your current password to update your email',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => resolve(false),
+            },
+            {
+              text: 'Update',
+              onPress: async (password?: string) => {
+                try {
+                  if (!password) {
+                    Alert.alert('Error', 'Password is required');
+                    resolve(false);
+                    return;
+                  }
+                  await account.updateEmail(value, password);
+                  Alert.alert('Success', 'Email updated successfully');
+                  resolve(true);
+                } catch (error: any) {
+                  console.error('Error updating email:', error);
+                  Alert.alert('Error', error.message || 'Failed to update email');
+                  resolve(false);
+                }
+              },
+            },
+          ],
+          'secure-text'
+        );
+      });
+    } catch (error: any) {
+      console.error('Error updating email:', error);
+      Alert.alert('Error', error.message || 'Failed to update email');
+      return false;
+    }
+  };
+
+  const handleEditPassword = async (newPassword: string): Promise<boolean> => {
+    try {
+      return new Promise((resolve) => {
+        Alert.prompt(
+          'Current Password Required',
+          'Please enter your current password',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => resolve(false),
+            },
+            {
+              text: 'Update',
+              onPress: async (oldPassword?: string) => {
+                try {
+                  if (!oldPassword) {
+                    Alert.alert('Error', 'Current password is required');
+                    resolve(false);
+                    return;
+                  }
+                  await account.updatePassword(newPassword, oldPassword);
+                  Alert.alert('Success', 'Password updated successfully');
+                  resolve(true);
+                } catch (error: any) {
+                  console.error('Error updating password:', error);
+                  Alert.alert('Error', error.message || 'Failed to update password');
+                  resolve(false);
+                }
+              },
+            },
+          ],
+          'secure-text'
+        );
+      });
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      Alert.alert('Error', error.message || 'Failed to update password');
+      return false;
+    }
+  };
+
+  const validateNickname = async (value: string) => {
+    if (!value.trim()) {
+      return { valid: false, message: 'Nickname is required' };
+    }
+    if (value.length < 3) {
+      return { valid: false, message: 'Nickname must be at least 3 characters' };
+    }
+    const isAvailable = await checkNicknameAvailability(value);
+    if (!isAvailable) {
+      return { valid: false, message: 'This nickname is already taken' };
+    }
+    return { valid: true };
+  };
+
+  const validatePhone = async (value: string) => {
+    if (!value.trim()) {
+      return { valid: false, message: 'Phone number is required' };
+    }
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    if (!phoneRegex.test(value)) {
+      return { valid: false, message: 'Please enter a valid phone number' };
+    }
+    if (value.replace(/\D/g, '').length < 9) {
+      return { valid: false, message: 'Phone number must be at least 10 digits' };
+    }
+    return { valid: true };
+  };
+
+  const validateEmail = async (value: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      return { valid: false, message: 'Please enter a valid email' };
+    }
+    return { valid: true };
+  };
+
+  const validatePassword = async (value: string) => {
+    if (value.length < 8) {
+      return { valid: false, message: 'Password must be at least 8 characters' };
+    }
+    return { valid: true };
   };
 
   const handleManageInvitedUsers = () => {
     (navigation as any).navigate(ScreenNames.MANAGE_INVITES);
   };
 
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              (navigation as any).reset({
+                index: 0,
+                routes: [{ name: ScreenNames.WELCOME }],
+              });
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone.',
+      'Are you sure you want to delete your account? This action cannot be undone and will permanently delete:\n\n• Your profile information\n• All your data\n• Your authentication credentials',
       [
         {
           text: 'Cancel',
@@ -75,9 +246,30 @@ export const Profile: React.FC = () => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            // Handle account deletion
-            Alert.alert('Account Deleted', 'Your account has been deleted.');
+          onPress: async () => {
+            try {
+              await deleteAccount();
+              
+              // Navigate to welcome screen after successful deletion
+              (navigation as any).reset({
+                index: 0,
+                routes: [{ name: ScreenNames.WELCOME }],
+              });
+              
+              // Show success message after navigation
+              setTimeout(() => {
+                Alert.alert(
+                  'Account Deleted', 
+                  'Your account data has been permanently deleted.'
+                );
+              }, 500);
+            } catch (error: any) {
+              console.error('Error deleting account:', error);
+              Alert.alert(
+                'Error', 
+                error.message || 'Failed to delete account. Please try again.'
+              );
+            }
           },
         },
       ]
@@ -92,8 +284,7 @@ export const Profile: React.FC = () => {
     >
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-        
-        {/* Header */}
+
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -106,58 +297,130 @@ export const Profile: React.FC = () => {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Account Settings Title */}
-          <Text style={styles.pageTitle}>Account Settings</Text>
-
-          {/* Editable Fields */}
-          <View style={styles.fieldsContainer}>
-            <EditableField
-              label="Nickname"
-              value={nickname}
-              onEdit={() => handleEditField('Nickname')}
-            />
-            <EditableField
-              label="Phone Number"
-              value={phoneNumber}
-              onEdit={() => handleEditField('Phone Number')}
-            />
-            <EditableField
-              label="Email"
-              value={email}
-              onEdit={() => handleEditField('Email')}
-            />
-            <EditableField
-              label="Password"
-              value={password}
-              isPassword={true}
-              onEdit={() => handleEditField('Password')}
-            />
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#ffffff" />
+            <Text style={styles.loadingText}>Loading profile...</Text>
           </View>
-
-          {/* Manage Invited Users Button */}
-          <TouchableOpacity
-            style={styles.manageUsersButton}
-            onPress={handleManageInvitedUsers}
-            activeOpacity={0.7}
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.manageUsersText}>Manage Invited Users</Text>
-            <ChevronRightIcon width={24} height={24} color="#ffffff" />
-          </TouchableOpacity>
+            <Text style={styles.pageTitle}>Account Settings</Text>
 
-          {/* Delete Account Button */}
-          <TouchableOpacity
-            style={styles.deleteAccountButton}
-            onPress={handleDeleteAccount}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.deleteAccountText}>Delete Account</Text>
-          </TouchableOpacity>
-        </ScrollView>
+            <View style={styles.fieldsContainer}>
+              <EditableField
+                label="Full Name"
+                value={profile?.full_name || 'Not set'}
+                onEdit={() => setEditingField('fullName')}
+              />
+              <EditableField
+                label="Nickname"
+                value={profile?.nickname || 'Not set'}
+                onEdit={() => setEditingField('nickname')}
+              />
+              <EditableField
+                label="Email"
+                value={user?.email || 'Not set'}
+                onEdit={() => setEditingField('email')}
+              />
+              <EditableField
+                label="Phone"
+                value={profile?.phone || 'Not set'}
+                onEdit={() => setEditingField('phone')}
+              />
+              <EditableField
+                label="Password"
+                value="********"
+                isPassword={true}
+                onEdit={() => setEditingField('password')}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.manageUsersButton}
+              onPress={handleManageInvitedUsers}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.manageUsersText}>Manage Invited Users</Text>
+              <ChevronRightIcon width={24} height={24} color="#ffffff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.deleteAccountButton}
+              onPress={handleDeleteAccount}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.deleteAccountText}>Delete Account</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+
+        {/* Edit Modals */}
+        <EditFieldModal
+          visible={editingField === 'fullName'}
+          title="Edit Full Name"
+          label="Full Name"
+          value={profile?.full_name || ''}
+          placeholder="Enter your full name"
+          onClose={() => setEditingField(null)}
+          onSave={handleEditFullName}
+        />
+
+        <EditFieldModal
+          visible={editingField === 'nickname'}
+          title="Edit Nickname"
+          label="Nickname"
+          value={profile?.nickname || ''}
+          placeholder="Enter your nickname"
+          onClose={() => setEditingField(null)}
+          onSave={handleEditNickname}
+          validateInput={validateNickname}
+        />
+
+        <EditFieldModal
+          visible={editingField === 'email'}
+          title="Edit Email"
+          label="Email"
+          value={user?.email || ''}
+          placeholder="Enter your email"
+          onClose={() => setEditingField(null)}
+          onSave={handleEditEmail}
+          validateInput={validateEmail}
+        />
+
+        <EditFieldModal
+          visible={editingField === 'phone'}
+          title="Edit Phone"
+          label="Phone Number"
+          value={profile?.phone || ''}
+          placeholder="Enter your phone number"
+          onClose={() => setEditingField(null)}
+          onSave={handleEditPhone}
+          validateInput={validatePhone}
+        />
+
+        <EditFieldModal
+          visible={editingField === 'password'}
+          title="Change Password"
+          label="New Password"
+          value=""
+          placeholder="Enter new password"
+          isPassword={true}
+          onClose={() => setEditingField(null)}
+          onSave={handleEditPassword}
+          validateInput={validatePassword}
+        />
       </SafeAreaView>
     </ImageBackground>
   );
@@ -173,6 +436,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#ffffff',
+    marginTop: 16,
+    fontFamily: 'Roboto_400Regular',
   },
   header: {
     flexDirection: 'row',
@@ -260,6 +534,16 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontFamily: 'Roboto_500Medium',
   },
+  signOutButton: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginBottom: 12,
+  },
+  signOutText: {
+    fontSize: 16,
+    color: '#ffffff',
+    fontFamily: 'Roboto_500Medium',
+  },
   deleteAccountButton: {
     alignItems: 'center',
     paddingVertical: 16,
@@ -272,4 +556,3 @@ const styles = StyleSheet.create({
 });
 
 export default Profile;
-
