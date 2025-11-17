@@ -48,13 +48,25 @@ export const FortyDay = () => {
   } = useFortyDayStore();
   
   const carouselRef = useRef<any>(null);
-  const [activeIndex, setActiveIndex] = useState(currentDay - 1);
+  const [activeIndex, setActiveIndex] = useState(() => {
+    if (days.length === 0) return 0;
+    return Math.max(0, Math.min(currentDay - 1, days.length - 1));
+  });
   
   const audioPlayer = useAudioPlayer();
 
   useEffect(() => {
     loadFortyDayContent();
   }, []);
+
+  useEffect(() => {
+    if (days.length > 0) {
+      const safeIndex = Math.max(0, Math.min(currentDay - 1, days.length - 1));
+      if (safeIndex !== activeIndex) {
+        setActiveIndex(safeIndex);
+      }
+    }
+  }, [days.length, currentDay]);
 
   useEffect(() => {
     const currentDayData = days[activeIndex];
@@ -75,7 +87,7 @@ export const FortyDay = () => {
   };
 
   const handleNext = () => {
-    if (activeIndex < 39) {
+    if (activeIndex < days.length - 1) {
       carouselRef.current?.next();
     }
   };
@@ -173,7 +185,7 @@ export const FortyDay = () => {
         </View>
       )}
 
-      {!loading && !error && (
+      {!loading && !error && days.length > 0 && (
         <>
           <View style={styles.carouselContainer}>
             <TouchableOpacity
@@ -195,7 +207,7 @@ export const FortyDay = () => {
                   setActiveIndex(index);
                   setCurrentDay(days[index].day);
                 }}
-                defaultIndex={currentDay - 1}
+                defaultIndex={days.length > 0 ? Math.max(0, Math.min(currentDay - 1, days.length - 1)) : 0}
                 loop={false}
                 enabled={true}
                 style={styles.carousel}
@@ -205,7 +217,7 @@ export const FortyDay = () => {
             <TouchableOpacity
               style={[styles.navButton, styles.navButtonRight]}
               onPress={handleNext}
-              disabled={activeIndex === 39}
+              disabled={activeIndex >= days.length - 1}
             >
               <ChevronRightIcon width={24} height={24} />
             </TouchableOpacity>
