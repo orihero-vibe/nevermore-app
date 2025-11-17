@@ -2,7 +2,7 @@
   "expo": {
     "name": "nevermore-app",
     "slug": "nevermore-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "default",
     "icon": "./src/assets/bell.png",
     "splash": {
@@ -15,7 +15,8 @@
     "scheme": "nevermoreapp",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nevermore.app"
+      "bundleIdentifier": "com.nevermore.app",
+      "buildNumber": "2"
     },
     "android": {
       "adaptiveIcon": {
