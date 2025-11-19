@@ -42,7 +42,7 @@ export function CustomSplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#2D1B69',
+    backgroundColor: '#000',
   },
   backgroundImage: {
     flex: 1,
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(45, 27, 105, 0.3)', // Semi-transparent overlay
+    // backgroundColor: 'rgba(45, 27, 105, 0.8)', // Semi-transparent overlay
   },
   title: {
     fontSize: 48,

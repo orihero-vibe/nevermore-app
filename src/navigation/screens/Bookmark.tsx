@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { DrawerActions } from '@react-navigation/native';
-import { Image as ExpoImage } from 'expo-image';
 import {
   BackdropFilter,
   Blur,
@@ -26,11 +25,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Roboto_400Regular } from '@expo-google-fonts/roboto';
 import { Cinzel_400Regular } from '@expo-google-fonts/cinzel';
+import { BlurView } from 'expo-blur';
 import MenuIcon from '../../assets/icons/menu';
 import BookmarkActiveIcon from '../../assets/icons/bookmark-active';
 import { useBookmarkStore } from '../../store/bookmarkStore';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { useTabSwitcher } from '../../hooks/useTabSwitcher';
+import { Image as ExpoImage } from 'expo-image';
 
 type RootStackParamList = {
   TemptationDetails: {
@@ -89,14 +90,20 @@ export function Bookmark() {
     }
   }, [filteredBookmarks]);
 
+  // Animate header and canvas once on mount
   useEffect(() => {
-    const animateComponents = () => {
-      headerOpacity.value = withTiming(1, { duration: 600 });
-      headerTranslateY.value = withTiming(0, { duration: 600 });
-      
-      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+    headerOpacity.value = withTiming(1, { duration: 600 });
+    headerTranslateY.value = withTiming(0, { duration: 600 });
+    
+    canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+    canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+  }, []);
 
+  // Animate bookmarks when filteredBookmarks changes
+  useEffect(() => {
+    if (filteredBookmarks.length === 0) return;
+
+    const animateBookmarks = () => {
       filteredBookmarks.forEach((_, index) => {
         const delay = 400 + (index * 150);
         bookmarkOpacities.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
@@ -104,7 +111,7 @@ export function Bookmark() {
       });
     };
 
-    const timer = setTimeout(animateComponents, 300);
+    const timer = setTimeout(animateBookmarks, 300);
     return () => clearTimeout(timer);
   }, [filteredBookmarks]);
 
@@ -167,20 +174,7 @@ export function Bookmark() {
         <Text style={styles.headerTitle}>Nevermore</Text>
         <View style={styles.headerRight} />
       </Animated.View>
-        {bookmarks.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <ExpoImage 
-            source={require('../../assets/empty-bookmark.png')} 
-            style={styles.emptyImage}
-            contentFit="contain"
-          />
-          <Text style={styles.emptyTitle}>No bookmarks yet</Text>
-          <Text style={styles.emptyText}>
-            Bookmark your favorite temptations.{'\n'}
-            We'll save them here for you.
-          </Text>
-        </View>
-      ) : (
+   
         <Animated.View style={[styles.canvasTouchable, canvasAnimatedStyle]}>
           <TouchableOpacity 
             style={styles.canvasTouchable}
@@ -197,10 +191,10 @@ export function Bookmark() {
             <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
 
             <SkiaText
-              text="BOOKMARKS"
+              text="BOOKMARK"
               font={headerText}
               color="white"
-              x={width / 2 - 120}
+              x={width / 2 - 100}
               y={150}
             />
 
@@ -212,8 +206,6 @@ export function Bookmark() {
               const top = 240 + index * 90;
               const cardHeight = 70;
               const cardWidth = width - 60;
-              const iconX = 30 + cardWidth - 25;
-              const iconY = top + cardHeight / 2;
 
                 return (
                   <BackdropFilter
@@ -236,23 +228,6 @@ export function Bookmark() {
                       font={cardFont}
                     />
 
-                    <BackdropFilter
-                      filter={<Blur blur={5} />}
-                      clip={rrect({ x: iconX - 12, y: iconY - 12, width: 24, height: 24 }, 12, 12)}
-                    >
-                      <Circle
-                        cx={iconX}
-                        cy={iconY}
-                        r={12}
-                        color={'rgba(150, 92, 223, 0.3)'}
-                      />
-                    </BackdropFilter>
-
-                    <Path
-                      path={`M ${iconX - 4} ${iconY - 6} L ${iconX - 4} ${iconY + 6} L ${iconX} ${iconY + 2} L ${iconX + 4} ${iconY + 6} L ${iconX + 4} ${iconY - 6} Z`}
-                      color={'#965CDF'}
-                      style="fill"
-                    />
                   </BackdropFilter>
                 );
               })}
@@ -261,11 +236,28 @@ export function Bookmark() {
           {tabSwitcher.touchableElements}
         </TouchableOpacity>
 
-        {filteredBookmarks.map((bookmark, index) => {
+        {filteredBookmarks.length ===0 ? (
+          <View style={styles.emptyStateContainer}>
+            <BlurView intensity={20} tint="dark" style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateTitle}>
+                Bookmark your favourite temptations
+              </Text>
+              <Text style={styles.emptyStateSubtitle}>
+                We'll save them here for you
+              </Text>
+              <View style={styles.emptyStateIconContainer}>
+                <ExpoImage 
+                  source={require('../../assets/empty-bookmark.png')} 
+                  style={styles.emptyImage}
+                  contentFit="cover"
+                />
+              </View>
+            </BlurView>
+          </View>
+        ): filteredBookmarks.map((bookmark, index) => {
           const top = 240 + index * 90;
           const cardHeight = 70;
           const cardWidth = width - 60;
-          const iconX = 30 + cardWidth - 25;
             
             return (
               <View
@@ -283,13 +275,12 @@ export function Bookmark() {
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   style={styles.bookmarkIconButton}
                 >
-                  <View style={{ width: 40, height: 40 }} />
+                  <BookmarkActiveIcon width={24} height={24} color="#965CDF" />
                 </TouchableOpacity>
               </View>
             );
           })}
         </Animated.View>
-      )}
     </View>
   );
 }
@@ -340,30 +331,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyContainer: {
-    flex: 1,
+  emptyStateContainer: {
+    position: 'absolute',
+    top: 280,
+    left: 30,
+    right: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 60,
   },
   emptyImage: {
-    width: 80,
-    height: 80,
-    marginBottom: 20,
-    opacity: 0.5,
+    width: 100,
+    height: 120,
   },
-  emptyTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
-    fontFamily: 'Cinzel_400Regular',
-    marginBottom: 12,
+  emptyStateCard: {
+    width: '100%',
+    minHeight: 200,
+    borderRadius: 12,
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
   },
-  emptyText: {
-    color: '#888888',
-    fontSize: 14,
+  emptyStateTitle: {
+    color: '#fff',
+    fontSize: 16,
     fontFamily: 'Roboto_400Regular',
     textAlign: 'center',
-    lineHeight: 20,
+    marginBottom: 6,
   },
+  emptyStateSubtitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  emptyStateIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
 });

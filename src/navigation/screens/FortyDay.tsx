@@ -28,6 +28,7 @@ import ChevronRightIcon from '../../assets/icons/chevron-right';
 import PlayIcon from '../../assets/icons/play';
 import PauseIcon from '../../assets/icons/pause';
 import VolumeIcon from '../../assets/icons/volume';
+import VolumeMutedIcon from '../../assets/icons/volume-muted';
 import SoundWaveIcon from '../../assets/icons/sound-wave';
 import CheckmarkIcon from '../../assets/icons/checkmark';
 
@@ -104,7 +105,7 @@ export const FortyDay = () => {
         <BlurView intensity={20} tint="dark" style={styles.card}>
           <View style={styles.cardHeader}>
             <TouchableOpacity style={styles.flagButton}>
-              <FlagIcon width={20} height={20} />
+              <FlagIcon width={30} height={30} />
             </TouchableOpacity>
           </View>
 
@@ -136,9 +137,14 @@ export const FortyDay = () => {
                 styles.mediaButton,
                 !item.audioUrl && styles.mediaButtonDisabled
               ]}
+              onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
               disabled={!item.audioUrl}
             >
-              <VolumeIcon width={20} height={20} />
+              {isCurrentItem && audioPlayer.isMuted ? (
+                <VolumeMutedIcon width={20} height={20} />
+              ) : (
+                <VolumeIcon width={20} height={20} />
+              )}
             </TouchableOpacity>
           </View>
         </BlurView>
@@ -234,30 +240,49 @@ export const FortyDay = () => {
               {currentDayData?.tasks.map((task, index) => (
                 <Pressable
                   key={task.id}
-                  style={[
-                    styles.taskItem,
-                    task.completed && styles.taskItemCompleted,
-                  ]}
+                  style={styles.taskItemWrapper}
                   onPress={() => handleTaskToggle(task.id)}
                 >
-                  <View style={styles.taskLeft}>
-                    <View style={styles.soundWaveContainer}>
-                      <SoundWaveIcon width={32} height={32} />
-                    </View>
-                    <View style={styles.taskTextContainer}>
-                      <Text style={styles.taskTitle}>{task.title}</Text>
-                      {/* <Text style={styles.taskSubtitle}>{task.subtitle}</Text> */}
-                    </View>
-                  </View>
+                  {task.completed ? (
+                    <ImageBackground
+                      source={require('../../assets/card-bg.png')}
+                      style={[styles.taskItem, styles.taskItemCompleted]}
+                      imageStyle={styles.taskItemImageStyle}
+                    >
+                      <View style={styles.taskLeft}>
+                        <View style={styles.soundWaveContainer}>
+                          <SoundWaveIcon width={32} height={32} />
+                        </View>
+                        <View style={styles.taskTextContainer}>
+                          <Text style={styles.taskTitle}>{task.title}</Text>
+                        </View>
+                      </View>
 
-                  <View
-                    style={[
-                      styles.checkbox,
-                      task.completed && styles.checkboxCompleted,
-                    ]}
-                  >
-                    {task.completed && <CheckmarkIcon width={20} height={20} color="#8B5CF6" />}
-                  </View>
+                      <View
+                        style={[
+                          styles.checkbox,
+                          styles.checkboxCompleted,
+                        ]}
+                      >
+                        <CheckmarkIcon width={20} height={20} color="#FFFFFF" />
+                      </View>
+                    </ImageBackground>
+                  ) : (
+                    <View style={styles.taskItem}>
+                      <View style={styles.taskLeft}>
+                        <View style={styles.soundWaveContainer}>
+                          <SoundWaveIcon width={32} height={32} />
+                        </View>
+                        <View style={styles.taskTextContainer}>
+                          <Text style={styles.taskTitle}>{task.title}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.checkbox}>
+                        {/* Empty checkbox */}
+                      </View>
+                    </View>
+                  )}
                 </Pressable>
               ))}
             </ScrollView>
@@ -350,8 +375,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   flagButton: {
-    width: 36,
-    height: 36,
+    width: 42,
+    height: 42,
     borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
@@ -374,7 +399,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Cinzel_900Black',
     fontSize: 96,
     color: '#fff',
-    lineHeight: 115,
+    lineHeight: 105,
     marginBottom: 12,
   },
   completionText: {
@@ -421,6 +446,9 @@ const styles = StyleSheet.create({
   tasksListContent: {
     paddingBottom: 100,
   },
+  taskItemWrapper: {
+    marginBottom: 12,
+  },
   taskItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -429,13 +457,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(139, 92, 246, 0.3)',
   },
   taskItemCompleted: {
-    backgroundColor: 'rgba(139, 92, 246, 0.25)',
-    borderColor: 'rgba(139, 92, 246, 0.5)',
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+  },
+  taskItemImageStyle: {
+    borderRadius: 16,
   },
   taskLeft: {
     flexDirection: 'row',
@@ -468,7 +498,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
     backgroundColor: 'transparent',
@@ -476,7 +506,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkboxCompleted: {
-    backgroundColor: '#fff',
+    backgroundColor: '#8B5CF6',
     borderColor: '#8B5CF6',
   },
   loadingContainer: {

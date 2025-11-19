@@ -96,6 +96,27 @@ This guide will help you configure Appwrite.io authentication for the Nevermore 
    **⚠️ CRITICAL: Set Collection Permissions for Categories and Content:**
    - Add "Users" role with Read permissions
    - This allows authenticated users to view categories and content
+   
+   **Support Collection:**
+   - Click "Create Collection"
+   - Name it "support"
+   - Copy your **Collection ID**
+   
+   **Add Attributes:**
+   - `status` (Enum, required, default: "new") - Ticket status
+     - Values: "new", "in-progress", "resolved", "closed"
+   - `message` (String, required, size: 5000) - Support message/description
+   - `reason` (Enum, optional) - Reason for support request
+     - Values: "bug-issue", "feedback", "feature-request", "inappropriate-content", "other"
+   - `userProfile` (Relationship, optional) - One to one relationship to user_profiles collection
+   
+   **⚠️ CRITICAL: Set Collection Permissions for Support:**
+   - Go to **Settings** → **Permissions**
+   - Add "Users" role with:
+     - ✅ **Create** - Allows users to create support tickets
+     - ✅ **Read** - Allows users to read their own tickets
+     - ❌ **Update** - Keep disabled (or Admin only)
+     - ❌ **Delete** - Keep disabled (or Admin only)
 
 ### 4. Configure Platform Settings
 
@@ -111,7 +132,37 @@ This guide will help you configure Appwrite.io authentication for the Nevermore 
 3. Add your package name (found in `android/app/build.gradle`)
 4. Add your SHA-256 fingerprint (optional for now)
 
-### 5. Configure Environment Variables
+### 5. Set Up Storage (For Audio and Media Files)
+
+1. Go to **Storage** in your Appwrite dashboard
+2. Click "Create Bucket"
+3. Name it (e.g., "media" or "audio-files")
+4. Copy your **Bucket ID**
+
+**⚠️ CRITICAL: Set Bucket Permissions:**
+
+1. In the bucket settings, go to **Permissions**
+2. Add "Users" role with:
+   - ✅ **Read** - Allows authenticated users to view/download files
+   - ✅ **Create** - (Optional) If users need to upload files
+3. Configure **File Security**:
+   - Set maximum file size (e.g., 50MB for audio files)
+   - Enable/disable file type restrictions
+   - Configure allowed file extensions: `.mp3`, `.m4a`, `.wav`, `.aac`
+
+**File Upload for FortyDay Journey:**
+- When creating content in the `content` collection with type `forty_day_journey`
+- Upload audio files to this storage bucket
+- Copy the file ID that Appwrite generates
+- Add this file ID to the `files` array field in your content document
+- The app will automatically convert file IDs to proper URLs
+
+**Without proper Storage configuration, you'll see this error:**
+```
+Error: The AVPlayerItem instance has failed with the error code -16044
+```
+
+### 6. Configure Environment Variables
 
 Your `.env` file in the project root should contain:
 
@@ -123,6 +174,8 @@ APPWRITE_DATABASE_ID=your_database_id_here
 APPWRITE_CATEGORY_COLLECTION_ID=your_collection_id_here
 APPWRITE_CONTENT_COLLECTION_ID=your_content_collection_id_here
 APPWRITE_USER_PROFILES_COLLECTION_ID=your_user_profiles_collection_id_here
+APPWRITE_SUPPORT_COLLECTION_ID=your_support_collection_id_here
+APPWRITE_STORAGE_BUCKET_ID=your_storage_bucket_id_here
 ```
 
 **Important Notes:**
@@ -131,10 +184,12 @@ APPWRITE_USER_PROFILES_COLLECTION_ID=your_user_profiles_collection_id_here
 - Replace `your_collection_id_here` with your actual Collection ID for categories
 - Replace `your_content_collection_id_here` with your actual Collection ID for content
 - Replace `your_user_profiles_collection_id_here` with your User Profiles Collection ID (REQUIRED)
+- Replace `your_support_collection_id_here` with your Support Collection ID (required for help & support feature)
+- Replace `your_storage_bucket_id_here` with your Storage Bucket ID (REQUIRED for audio/media files)
 - Never commit the `.env` file to version control (it's already in `.gitignore`)
 - After updating `.env`, restart the development server: `npm start` or `npx expo start --clear`
 
-### 6. Configure Deep Links (for Email Verification & Password Reset)
+### 7. Configure Deep Links (for Email Verification & Password Reset)
 
 Update the URLs in `src/services/auth.service.ts`:
 
@@ -297,6 +352,33 @@ The `user_profiles` collection automatically links to Appwrite Auth via the `aut
 - Restart the Metro bundler after changing `.env`
 - Run: `npm start` or `npx expo start --clear`
 - Check that babel plugins are configured correctly for env variables
+
+#### Audio files not loading (Error -16044)
+**This error means the audio URL is invalid or the file cannot be accessed.**
+
+**Solution:**
+1. Verify `APPWRITE_STORAGE_BUCKET_ID` is set correctly in your `.env` file
+2. Restart your development server after updating `.env`
+3. Check that your Storage bucket has proper permissions:
+   - Go to Appwrite Console → Storage → Your Bucket → Permissions
+   - Ensure "Users" role has "Read" permission
+4. Verify your audio files are uploaded to the correct bucket:
+   - Go to Appwrite Console → Storage → Your Bucket → Files
+   - Confirm your audio files are listed there
+5. Check the `files` field in your content documents:
+   - Go to Appwrite Console → Databases → Content Collection
+   - Open a document with type `forty_day_journey`
+   - The `files` array should contain file IDs (not URLs) from your Storage bucket
+6. Ensure audio files are in supported formats:
+   - MP3 (recommended)
+   - M4A
+   - WAV
+   - AAC
+7. Test the file URL manually in a browser:
+   ```
+   https://cloud.appwrite.io/v1/storage/buckets/[BUCKET_ID]/files/[FILE_ID]/view?project=[PROJECT_ID]
+   ```
+   Replace [BUCKET_ID], [FILE_ID], and [PROJECT_ID] with your actual values
 
 ## 📚 Additional Resources
 

@@ -7,10 +7,12 @@ interface UseAudioPlayerReturn {
   currentTime: string;
   totalTime: string;
   progress: number;
+  isMuted: boolean;
   play: () => Promise<void>;
   pause: () => Promise<void>;
   stop: () => Promise<void>;
   togglePlayPause: () => Promise<void>;
+  toggleMute: () => Promise<void>;
   seekForward: (seconds: number) => Promise<void>;
   seekBackward: (seconds: number) => Promise<void>;
   seekTo: (progress: number) => Promise<void>;
@@ -29,6 +31,8 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
   const [currentTime, setCurrentTime] = useState('00:00');
   const [totalTime, setTotalTime] = useState('00:00');
   const [progress, setProgress] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const previousVolumeRef = useRef<number>(1.0);
 
   const soundRef = useRef<Audio.Sound | null>(null);
 
@@ -69,6 +73,14 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     try {
       setIsLoading(true);
 
+      // Validate URI
+      if (!uri || uri.trim() === '') {
+        console.warn('Cannot load audio: empty URI provided');
+        return;
+      }
+
+      console.log('Loading audio from URI:', uri);
+
       // Unload previous audio if exists
       if (soundRef.current) {
         await soundRef.current.unloadAsync();
@@ -91,13 +103,52 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
 
       soundRef.current = sound;
 
+      // Reset mute state and set volume to 1.0 for new audio
+      setIsMuted(false);
+      previousVolumeRef.current = 1.0;
+      await sound.setVolumeAsync(1.0);
+
       // Get initial status
       const status = await sound.getStatusAsync();
       if (status.isLoaded && status.durationMillis) {
         setTotalTime(formatTime(status.durationMillis));
       }
+
+      console.log('Audio loaded successfully');
     } catch (error) {
       console.error('Error loading audio:', error);
+      
+      // Log full error details for debugging
+      if (error && typeof error === 'object') {
+        console.error('Error details:', {
+          message: (error as any).message,
+          code: (error as any).code,
+          nativeError: (error as any).nativeStackIOS || (error as any).nativeStackAndroid,
+        });
+      }
+      
+      // Provide helpful error messages
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorMessage = (error as Error).message;
+        if (errorMessage.includes('-16044') || errorMessage.includes('CoreMediaErrorDomain')) {
+          console.error(
+            '\n⚠️  AUDIO FILE ACCESS ERROR ⚠️\n' +
+            'The audio file cannot be loaded. This is usually a permissions issue.\n\n' +
+            'SOLUTION: Make your Appwrite Storage bucket publicly readable:\n' +
+            '1. Go to Appwrite Console → Storage → Your Bucket\n' +
+            '2. Click "Settings" → "Permissions"\n' +
+            '3. Add a new permission\n' +
+            '4. Select "Any" role (this allows unauthenticated access)\n' +
+            '5. Enable "Read" permission ✅\n' +
+            '6. Save changes\n\n' +
+            'Alternative checks:\n' +
+            '- Ensure the audio file format is supported (MP3, M4A, WAV, AAC)\n' +
+            '- Verify APPWRITE_STORAGE_BUCKET_ID is correct in .env\n' +
+            '- Check that the file exists in the bucket\n' +
+            '- Try accessing the URL in a browser to test\n'
+          );
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -114,6 +165,8 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
       setCurrentTime('00:00');
       setTotalTime('00:00');
       setProgress(0);
+      setIsMuted(false);
+      previousVolumeRef.current = 1.0;
     } catch (error) {
       console.error('Error unloading audio:', error);
     }
@@ -267,6 +320,32 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     await seekForward(10);
   };
 
+  // Toggle mute/unmute
+  const toggleMute = async () => {
+    try {
+      if (!soundRef.current) {
+        return;
+      }
+
+      const status = await soundRef.current.getStatusAsync();
+      if (status.isLoaded) {
+        if (isMuted) {
+          // Unmute: restore previous volume
+          await soundRef.current.setVolumeAsync(previousVolumeRef.current);
+          setIsMuted(false);
+        } else {
+          // Mute: save current volume and set to 0
+          const currentVolume = status.volume ?? 1.0;
+          previousVolumeRef.current = currentVolume;
+          await soundRef.current.setVolumeAsync(0);
+          setIsMuted(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling mute:', error);
+    }
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -282,10 +361,12 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     currentTime,
     totalTime,
     progress,
+    isMuted,
     play,
     pause,
     stop,
     togglePlayPause,
+    toggleMute,
     seekForward,
     seekBackward,
     seekTo,

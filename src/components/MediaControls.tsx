@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Pressable } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, PanResponder } from 'react-native';
 import BackwardIcon from '../assets/icons/backward10';
 import Forward10Icon from '../assets/icons/forward10';
 import PlayIcon from '../assets/icons/play';
@@ -33,45 +33,49 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
 }) => {
   const progressWidth = Math.min(Math.max(progress * 100, 0), 100);
   const progressBarRef = React.useRef<View>(null);
-  const [isDragging, setIsDragging] = React.useState(false);
   
-  // Handle touch on progress bar
-  const handleProgressBarTouch = (event: any) => {
-    if (!onSeek || isLoading || !progressBarRef.current) return;
-    
-    const locationX = event.nativeEvent.locationX;
-    
-    progressBarRef.current.measure((x, y, width, height) => {
-      if (width > 0) {
-        const newProgress = Math.max(0, Math.min(1, locationX / width));
-        console.log('Touch detected! Seeking to:', newProgress, 'locationX:', locationX, 'width:', width);
-        onSeek(newProgress);
-      }
-    });
-  };
-
-  // Handle touch move (sliding)
-  const handleTouchMove = (event: any) => {
-    if (!onSeek || isLoading || !progressBarRef.current || !isDragging) return;
-    
-    const locationX = event.nativeEvent.locationX;
-    
-    progressBarRef.current.measure((x, y, width, height) => {
-      if (width > 0) {
-        const newProgress = Math.max(0, Math.min(1, locationX / width));
-        console.log('Sliding! Seeking to:', newProgress);
-        onSeek(newProgress);
-      }
-    });
-  };
-
-  const handleTouchStart = () => {
-    setIsDragging(true);
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
+  // PanResponder for handling drag gestures
+  const panResponder = React.useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !isLoading && !!onSeek,
+        onMoveShouldSetPanResponder: () => !isLoading && !!onSeek,
+        onPanResponderGrant: (event) => {
+          if (!onSeek || isLoading || !progressBarRef.current) return;
+          
+          progressBarRef.current.measureInWindow((x, y, width, height) => {
+            if (width > 0) {
+              const relativeX = event.nativeEvent.pageX - x;
+              const newProgress = Math.max(0, Math.min(1, relativeX / width));
+              onSeek(newProgress);
+            }
+          });
+        },
+        onPanResponderMove: (event) => {
+          if (!onSeek || isLoading || !progressBarRef.current) return;
+          
+          progressBarRef.current.measureInWindow((x, y, width, height) => {
+            if (width > 0) {
+              const relativeX = event.nativeEvent.pageX - x;
+              const newProgress = Math.max(0, Math.min(1, relativeX / width));
+              onSeek(newProgress);
+            }
+          });
+        },
+        onPanResponderRelease: (event) => {
+          if (!onSeek || isLoading || !progressBarRef.current) return;
+          
+          progressBarRef.current.measureInWindow((x, y, width, height) => {
+            if (width > 0) {
+              const relativeX = event.nativeEvent.pageX - x;
+              const newProgress = Math.max(0, Math.min(1, relativeX / width));
+              onSeek(newProgress);
+            }
+          });
+        },
+      }),
+    [onSeek, isLoading]
+  );
   
   return (
     <View style={styles.mediaPlayerCard}>
@@ -100,19 +104,15 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
       </View>
 
       <View style={styles.progressContainer}>
-        <Pressable
+        <View
           ref={progressBarRef}
           style={styles.progressBarTouchArea}
-          onPress={handleProgressBarTouch}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          disabled={isLoading || !onSeek}
+          {...panResponder.panHandlers}
         >
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${progressWidth}%` }]} />
           </View>
-        </Pressable>
+        </View>
         <View style={styles.timeContainer}>
           <Text style={styles.timeText}>{currentTime}</Text>
           <Text style={styles.timeText}>{totalTime}</Text>

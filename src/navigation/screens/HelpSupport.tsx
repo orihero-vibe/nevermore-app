@@ -8,62 +8,67 @@ import {
   TextInput,
   Alert,
   ImageBackground,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import CheckIcon from '../../assets/icons/check';
+import { supportService, SupportReason } from '../../services/support.service';
+import { useUserProfile } from '../../hooks/useUserProfile';
 
-interface CheckboxProps {
+interface RadioButtonProps {
   label: string;
   checked: boolean;
   onToggle: () => void;
 }
 
-const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onToggle }) => {
+const RadioButton: React.FC<RadioButtonProps> = ({ label, checked, onToggle }) => {
   return (
     <TouchableOpacity
-      style={styles.checkboxContainer}
+      style={styles.radioContainer}
       onPress={onToggle}
       activeOpacity={0.7}
     >
-      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-        {checked && (
-          <CheckIcon color="#ffffff" />
-        )}
+      <View style={[styles.radioButton, checked && styles.radioButtonChecked]}>
+        {checked && <View style={styles.radioButtonInner} />}
       </View>
-      <Text style={styles.checkboxLabel}>{label}</Text>
+      <Text style={styles.radioLabel}>{label}</Text>
     </TouchableOpacity>
   );
 };
 
+// Map UI reason labels to enum values
+const REASON_MAP: Record<string, SupportReason> = {
+  'Technical Issue/Bug': 'bug-issue',
+  'Feedback': 'feedback',
+  'Feature Request': 'feature-request',
+  'Inappropriate Content': 'inappropriate-content',
+  'Other': 'other',
+};
+
+const REASONS = [
+  'Technical Issue/Bug',
+  'Feedback',
+  'Feature Request',
+  'Inappropriate Content',
+  'Other',
+] as const;
+
 export const HelpSupport: React.FC = () => {
   const navigation = useNavigation();
-  const [selectedReasons, setSelectedReasons] = useState<string[]>(['Feedback']);
+  const { profile } = useUserProfile();
+  const [selectedReason, setSelectedReason] = useState<string>('Feedback');
   const [message, setMessage] = useState('');
-  const maxCharacters = 1000;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const maxCharacters = 5000;
 
-  const reasons = [
-    'Technical Issue/Bug',
-    'Feedback',
-    'Feature Request',
-    'Inappropriate Content',
-    'Other',
-  ];
-
-  const toggleReason = (reason: string) => {
-    setSelectedReasons((prev) => {
-      if (prev.includes(reason)) {
-        return prev.filter((r) => r !== reason);
-      } else {
-        return [...prev, reason];
-      }
-    });
+  const selectReason = (reason: string) => {
+    setSelectedReason(reason);
   };
 
-  const handleSend = () => {
-    if (selectedReasons.length === 0) {
-      Alert.alert('Error', 'Please select at least one reason.');
+  const handleSend = async () => {
+    if (!selectedReason) {
+      Alert.alert('Error', 'Please select a reason.');
       return;
     }
 
@@ -72,17 +77,35 @@ export const HelpSupport: React.FC = () => {
       return;
     }
 
-    // Handle sending the support request
-    Alert.alert(
-      'Thank You',
-      'Your message has been sent. We will respond within 3-5 business days.',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]
-    );
+    setIsSubmitting(true);
+    try {
+      const reasonEnum = REASON_MAP[selectedReason] || 'other';
+
+      await supportService.createSupportTicket({
+        message: message.trim(),
+        reason: reasonEnum,
+        userProfileId: profile?.$id,
+      });
+
+      Alert.alert(
+        'Thank You',
+        'Your message has been sent. We will respond within 3-5 business days.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('Error creating support ticket:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to send your message. Please try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
@@ -118,16 +141,16 @@ export const HelpSupport: React.FC = () => {
           {/* Title */}
           <Text style={styles.pageTitle}>How Can We Help You?</Text>
 
-          {/* Select reason(s) section */}
-          <Text style={styles.sectionLabel}>Select reason(s):</Text>
+          {/* Select reason section */}
+          <Text style={styles.sectionLabel}>Select reason:</Text>
           
-          <View style={styles.checkboxList}>
-            {reasons.map((reason) => (
-              <Checkbox
+          <View style={styles.radioList}>
+            {REASONS.map((reason) => (
+              <RadioButton
                 key={reason}
                 label={reason}
-                checked={selectedReasons.includes(reason)}
-                onToggle={() => toggleReason(reason)}
+                checked={selectedReason === reason}
+                onToggle={() => selectReason(reason)}
               />
             ))}
           </View>
@@ -156,11 +179,16 @@ export const HelpSupport: React.FC = () => {
 
           {/* Send Button */}
           <TouchableOpacity
-            style={styles.sendButton}
+            style={[styles.sendButton, isSubmitting && styles.sendButtonDisabled]}
             onPress={handleSend}
             activeOpacity={0.8}
+            disabled={isSubmitting}
           >
-            <Text style={styles.sendButtonText}>Send</Text>
+            {isSubmitting ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.sendButtonText}>Send</Text>
+            )}
           </TouchableOpacity>
 
           {/* Cancel Button */}
@@ -229,18 +257,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontFamily: 'Roboto_400Regular',
   },
-  checkboxList: {
+  radioList: {
     marginBottom: 24,
   },
-  checkboxContainer: {
+  radioContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
-  checkbox: {
+  radioButton: {
     width: 24,
     height: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
     backgroundColor: 'transparent',
@@ -248,16 +276,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxChecked: {
-    backgroundColor: '#8B5CF6',
+  radioButtonChecked: {
     borderColor: '#8B5CF6',
   },
-  checkmark: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#8B5CF6',
   },
-  checkboxLabel: {
+  radioLabel: {
     fontSize: 16,
     color: '#ffffff',
     fontFamily: 'Roboto_400Regular',
@@ -301,6 +329,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+  },
+  sendButtonDisabled: {
+    opacity: 0.6,
   },
   sendButtonText: {
     fontSize: 18,

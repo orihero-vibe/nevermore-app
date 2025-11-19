@@ -158,6 +158,13 @@ export default function TemptationDetails() {
 
   return (
     <View style={styles.container}>
+      {/* Fixed Background */}
+      <View style={styles.backgroundContainer}>
+        <Canvas style={styles.backgroundCanvas}>
+          <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
+        </Canvas>
+      </View>
+
       {/* Header */}
       <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -174,8 +181,6 @@ export default function TemptationDetails() {
       >
         <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
           <Canvas style={styles.canvas}>
-            {/* Background Image */}
-            <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
             {/* Tab Switcher Elements */}
             {tabSwitcher.containerElement}
             {tabSwitcher.indicatorElement}
@@ -273,6 +278,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+    zIndex: 0,
+  },
+  backgroundCanvas: {
+    height: 300,
   },
   loadingContainer: {
     justifyContent: 'center',

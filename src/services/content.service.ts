@@ -1,5 +1,5 @@
 import { Query } from 'react-native-appwrite';
-import { databases } from './appwrite.config';
+import { tablesDB } from './appwrite.config';
 import { APPWRITE_DATABASE_ID, APPWRITE_CONTENT_COLLECTION_ID } from '@env';
 
 export interface Content {
@@ -58,22 +58,22 @@ class ContentService {
     });
 
     try {
-      const response = await databases.listDocuments(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_CONTENT_COLLECTION_ID,
-        [
+      const response = await tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_CONTENT_COLLECTION_ID,
+        queries: [
           Query.limit(1000), // Fetch up to 1000 items
-        ]
-      );
+        ],
+      });
 
-      console.log('Successfully fetched content:', response.documents.length);
+      console.log('Successfully fetched content:', response.rows.length);
 
-      if (response.documents.length > 0) {
-        console.log('Sample content structure:', Object.keys(response.documents[0]));
-        console.log('Sample content data:', response.documents[0]);
+      if (response.rows.length > 0) {
+        console.log('Sample content structure:', Object.keys(response.rows[0]));
+        console.log('Sample content data:', response.rows[0]);
       }
 
-      return response.documents as unknown as Content[];
+      return response.rows as unknown as Content[];
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'message' in error) {
         const errorObj = error as { message?: string; code?: string; type?: string };
@@ -120,18 +120,18 @@ class ContentService {
     console.log('Fetching content for category:', categoryId);
 
     try {
-      const response = await databases.listDocuments(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_CONTENT_COLLECTION_ID,
-        [
+      const response = await tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_CONTENT_COLLECTION_ID,
+        queries: [
           Query.equal('category', categoryId),
           Query.limit(1000),
-        ]
-      );
+        ],
+      });
 
-      console.log(`Successfully fetched ${response.documents.length} content items for category ${categoryId}`);
+      console.log(`Successfully fetched ${response.rows.length} content items for category ${categoryId}`);
 
-      return response.documents as unknown as Content[];
+      return response.rows as unknown as Content[];
     } catch (error: unknown) {
       console.error('Error fetching content by category:', error);
       throw error;
@@ -147,11 +147,11 @@ class ContentService {
     try {
       this.validateConfig();
 
-      const content = await databases.getDocument(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_CONTENT_COLLECTION_ID,
-        contentId
-      );
+      const content = await tablesDB.getRow({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_CONTENT_COLLECTION_ID,
+        rowId: contentId,
+      });
 
       return content as unknown as Content;
     } catch (error: any) {
@@ -171,18 +171,18 @@ class ContentService {
     console.log('Fetching content for type:', type);
 
     try {
-      const response = await databases.listDocuments(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_CONTENT_COLLECTION_ID,
-        [
+      const response = await tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_CONTENT_COLLECTION_ID,
+        queries: [
           Query.equal('type', type),
           Query.limit(1000),
-        ]
-      );
+        ],
+      });
 
-      console.log(`Successfully fetched ${response.documents.length} content items for type ${type}`);
+      console.log(`Successfully fetched ${response.rows.length} content items for type ${type}`);
 
-      return response.documents as unknown as Content[];
+      return response.rows as unknown as Content[];
     } catch (error: unknown) {
       console.error('Error fetching content by type:', error);
       throw error;
@@ -199,23 +199,23 @@ class ContentService {
     console.log('Fetching FortyDay journey content');
 
     try {
-      const response = await databases.listDocuments(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_CONTENT_COLLECTION_ID,
-        [
+      const response = await tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_CONTENT_COLLECTION_ID,
+        queries: [
           Query.equal('type', 'forty_day_journey'),
           Query.limit(40),
-        ]
-      );
+        ],
+      });
 
-      console.log(`Successfully fetched ${response.documents.length} FortyDay journey items`);
+      console.log(`Successfully fetched ${response.rows.length} FortyDay journey items`);
 
-      if (response.documents.length > 0) {
-        console.log('Sample FortyDay structure:', Object.keys(response.documents[0]));
-        console.log('First document:', response.documents[0]);
+      if (response.rows.length > 0) {
+        console.log('Sample FortyDay structure:', Object.keys(response.rows[0]));
+        console.log('First document:', response.rows[0]);
       }
 
-      return response.documents as unknown as Content[];
+      return response.rows as unknown as Content[];
     } catch (error: unknown) {
       console.error('Error fetching FortyDay content:', error);
       throw error;
@@ -234,19 +234,19 @@ class ContentService {
     console.log('Fetching content for category and role:', { categoryId, role });
 
     try {
-      const response = await databases.listDocuments(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_CONTENT_COLLECTION_ID,
-        [
+      const response = await tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_CONTENT_COLLECTION_ID,
+        queries: [
           Query.equal('category', categoryId),
           Query.equal('role', role),
           Query.limit(1000),
-        ]
-      );
+        ],
+      });
 
-      console.log(`Successfully fetched ${response.documents.length} content items for category ${categoryId} and role ${role}`);
+      console.log(`Successfully fetched ${response.rows.length} content items for category ${categoryId} and role ${role}`);
 
-      return response.documents as unknown as Content[];
+      return response.rows as unknown as Content[];
     } catch (error: unknown) {
       console.error('Error fetching content by category and role:', error);
       throw error;

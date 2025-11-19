@@ -1,5 +1,5 @@
 import { ID, Models, Query } from 'react-native-appwrite';
-import { databases } from './appwrite.config';
+import { tablesDB } from './appwrite.config';
 import { APPWRITE_DATABASE_ID, APPWRITE_USER_PROFILES_COLLECTION_ID } from '@env';
 
 export interface UserProfile {
@@ -43,19 +43,19 @@ class UserProfileService {
     try {
       this.validateConfig();
 
-      const profile = await databases.createDocument(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_USER_PROFILES_COLLECTION_ID,
-        ID.unique(),
-        {
+      const profile = await tablesDB.createRow({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_USER_PROFILES_COLLECTION_ID,
+        rowId: ID.unique(),
+        data: {
           auth_id,
           full_name: full_name || '',
           nickname: nickname || '',
           type: type || 'patient',
-        }
-      );
+        },
+      });
 
-      return profile;
+      return profile as unknown as Models.Document;
     } catch (error: any) {
       console.error('Create user profile error:', error);
       
@@ -75,14 +75,14 @@ class UserProfileService {
     try {
       this.validateConfig();
 
-      const response = await databases.listDocuments(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_USER_PROFILES_COLLECTION_ID,
-        [Query.equal('auth_id', auth_id)]
-      );
+      const response = await tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_USER_PROFILES_COLLECTION_ID,
+        queries: [Query.equal('auth_id', auth_id)],
+      });
 
-      if (response.documents.length > 0) {
-        return response.documents[0] as unknown as UserProfile;
+      if (response.rows.length > 0) {
+        return response.rows[0] as unknown as UserProfile;
       }
 
       return null;
@@ -99,14 +99,14 @@ class UserProfileService {
     try {
       this.validateConfig();
 
-      const profile = await databases.updateDocument(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_USER_PROFILES_COLLECTION_ID,
-        profileId,
-        data
-      );
+      const profile = await tablesDB.updateRow({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_USER_PROFILES_COLLECTION_ID,
+        rowId: profileId,
+        data,
+      });
 
-      return profile;
+      return profile as unknown as Models.Document;
     } catch (error: any) {
       console.error('Update user profile error:', error);
       throw new Error(error.message || 'Failed to update user profile');
@@ -117,11 +117,11 @@ class UserProfileService {
     try {
       this.validateConfig();
 
-      await databases.deleteDocument(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_USER_PROFILES_COLLECTION_ID,
-        profileId
-      );
+      await tablesDB.deleteRow({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_USER_PROFILES_COLLECTION_ID,
+        rowId: profileId,
+      });
     } catch (error: any) {
       console.error('Delete user profile error:', error);
       throw new Error(error.message || 'Failed to delete user profile');
@@ -136,13 +136,13 @@ class UserProfileService {
         return false;
       }
 
-      const response = await databases.listDocuments(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_USER_PROFILES_COLLECTION_ID,
-        [Query.equal('nickname', nickname)]
-      );
+      const response = await tablesDB.listRows({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_USER_PROFILES_COLLECTION_ID,
+        queries: [Query.equal('nickname', nickname)],
+      });
 
-      return response.documents.length === 0;
+      return response.rows.length === 0;
     } catch (error: any) {
       console.error('Check nickname availability error:', error);
       throw new Error(error.message || 'Failed to check nickname availability');

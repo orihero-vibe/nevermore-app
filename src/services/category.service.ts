@@ -1,5 +1,5 @@
 import { Query } from 'react-native-appwrite';
-import { databases } from './appwrite.config';
+import { tablesDB } from './appwrite.config';
 import { APPWRITE_DATABASE_ID, APPWRITE_CATEGORY_COLLECTION_ID } from '@env';
 
 export interface Category {
@@ -56,34 +56,34 @@ class CategoryService {
       // Fetch categories sorted by order field (ascending)
       let response;
       try {
-        response = await databases.listDocuments(
-          APPWRITE_DATABASE_ID,
-          APPWRITE_CATEGORY_COLLECTION_ID,
-          [
+        response = await tablesDB.listRows({
+          databaseId: APPWRITE_DATABASE_ID,
+          tableId: APPWRITE_CATEGORY_COLLECTION_ID,
+          queries: [
             Query.orderAsc('order'), // Sort by order field in ascending order
             Query.limit(100),
-          ]
-        );
+          ],
+        });
       } catch (queryError) {
         // If query fails (e.g., order field doesn't exist or isn't indexed), fetch without ordering
         console.warn('Failed to fetch with order query, trying without query:', queryError);
-        response = await databases.listDocuments(
-          APPWRITE_DATABASE_ID,
-          APPWRITE_CATEGORY_COLLECTION_ID,
-          [Query.limit(100)]
-        );
+        response = await tablesDB.listRows({
+          databaseId: APPWRITE_DATABASE_ID,
+          tableId: APPWRITE_CATEGORY_COLLECTION_ID,
+          queries: [Query.limit(100)],
+        });
       }
 
-      console.log('Successfully fetched categories:', response.documents.length);
+      console.log('Successfully fetched categories:', response.rows.length);
 
       // Log first category structure for debugging
-      if (response.documents.length > 0) {
-        console.log('Sample category structure:', Object.keys(response.documents[0]));
-        console.log('Sample category data:', response.documents[0]);
+      if (response.rows.length > 0) {
+        console.log('Sample category structure:', Object.keys(response.rows[0]));
+        console.log('Sample category data:', response.rows[0]);
       }
 
       // Sort manually by order (ascending) if query ordering didn't work
-      const documents = response.documents as Category[];
+      const documents = response.rows as Category[];
       if (documents.length > 0 && typeof documents[0].order === 'number') {
         // If we have order field, sort by it (ascending)
         documents.sort((a, b) => {
@@ -138,11 +138,11 @@ class CategoryService {
     try {
       this.validateConfig();
 
-      const category = await databases.getDocument(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_CATEGORY_COLLECTION_ID,
-        categoryId
-      );
+      const category = await tablesDB.getRow({
+        databaseId: APPWRITE_DATABASE_ID,
+        tableId: APPWRITE_CATEGORY_COLLECTION_ID,
+        rowId: categoryId,
+      });
 
       return category as unknown as Category;
     } catch (error: any) {

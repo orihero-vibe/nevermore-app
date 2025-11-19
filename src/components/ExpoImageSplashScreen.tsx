@@ -41,7 +41,7 @@ export function ExpoImageSplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#2D1B69',
+    backgroundColor: '#000',
   },
   backgroundImage: {
     position: 'absolute',
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    backgroundColor: 'rgba(45, 27, 105, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     zIndex: 1,
     paddingBottom: 200,
   },

@@ -1,10 +1,11 @@
-import { Client, Account, Databases, ID } from 'react-native-appwrite';
+import { Client, Account, TablesDB, ID } from 'react-native-appwrite';
 import {
   APPWRITE_ENDPOINT,
   APPWRITE_PROJECT_ID,
   APPWRITE_DATABASE_ID,
   APPWRITE_CATEGORY_COLLECTION_ID,
   APPWRITE_USER_PROFILES_COLLECTION_ID,
+  APPWRITE_STORAGE_BUCKET_ID,
   APPWRITE_PLATFORM,
 } from '@env';
 
@@ -14,11 +15,12 @@ const appwriteConfig = {
   databaseId: APPWRITE_DATABASE_ID || '',
   collectionId: APPWRITE_CATEGORY_COLLECTION_ID || '',
   userProfilesCollectionId: APPWRITE_USER_PROFILES_COLLECTION_ID || '',
+  storageBucketId: APPWRITE_STORAGE_BUCKET_ID || '',
   platform: APPWRITE_PLATFORM || '',
 };
 
 const validateConfig = () => {
-  const requiredFields = ['endpoint', 'projectId', 'databaseId', 'collectionId'];
+  const requiredFields = ['endpoint', 'projectId', 'databaseId', 'collectionId', 'storageBucketId'];
   const missingFields = requiredFields.filter(
     (field) => !appwriteConfig[field as keyof typeof appwriteConfig]
   );
@@ -26,7 +28,7 @@ const validateConfig = () => {
   if (missingFields.length > 0) {
     console.warn(
       `Missing Appwrite configuration: ${missingFields.join(', ')}. ` +
-      'Please check your .env file.'
+      'Please check your .env file. Storage features (audio/media) require APPWRITE_STORAGE_BUCKET_ID.'
     );
   }
 };
@@ -39,7 +41,7 @@ const client = new Client()
   .setPlatform(appwriteConfig.platform);
 
 export const account = new Account(client);
-export const databases = new Databases(client);
+export const tablesDB = new TablesDB(client);
 export { ID };
 
 export default appwriteConfig;

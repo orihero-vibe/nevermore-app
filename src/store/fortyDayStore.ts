@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { contentService, Content } from '../services/content.service';
+import { getFirstFileUrl } from '../utils/storageUtils';
 
 export interface Task {
   id: string;
@@ -189,9 +190,8 @@ export const useFortyDayStore = create<FortyDayState>()(
               ? Math.round((completedTasks / tasks.length) * 100)
               : 0;
             
-            const audioUrl = content.files && Array.isArray(content.files) && content.files.length > 0
-              ? content.files[0]
-              : undefined;
+            // Convert Appwrite file ID to proper storage URL
+            const audioUrl = getFirstFileUrl(content.files);
             
             return {
               day: dayNumber,
