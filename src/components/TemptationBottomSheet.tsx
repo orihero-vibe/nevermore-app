@@ -28,7 +28,6 @@ interface TemptationBottomSheetProps {
   onNavigate?: (item: TemptationItem) => void;
 }
 
-// Animated Item Component with Reanimated
 const AnimatedTemptationItem: React.FC<{
   item: TemptationItem;
   onPress: (item: TemptationItem) => void;
@@ -41,8 +40,6 @@ const AnimatedTemptationItem: React.FC<{
   const backgroundOpacity = useSharedValue(0);
 
   React.useEffect(() => {
-    // Smooth staggered entrance animation without bouncing
-    const delay = index * 80; // Reduced delay for faster animation
     fadeAnim.value = withTiming(1, { duration: 300 });
     scaleAnim.value = withTiming(1, { duration: 300 });
     translateYAnim.value = withTiming(0, { duration: 300 });
@@ -59,12 +56,10 @@ const AnimatedTemptationItem: React.FC<{
   };
 
   const handlePress = () => {
-    // Simple press effect without bouncing
     pressScale.value = withTiming(0.95, { duration: 50 }, () => {
       pressScale.value = withTiming(1, { duration: 100 });
     });
     
-    // Call the original onPress after a shorter delay
     setTimeout(() => {
       onPress(item);
     }, 100);
@@ -99,7 +94,6 @@ const AnimatedTemptationItem: React.FC<{
           <Text style={styles.unselectedItemText}>{item.title}</Text>
         </View>
         
-        {/* Animated Background Image */}
         <Animated.View 
           style={[styles.animatedBackground, backgroundAnimatedStyle]}
           pointerEvents="none"
@@ -127,10 +121,8 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
 }) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
 
-  // Define snap points - 75% as shown in screenshot
   const snapPoints = useMemo(() => ['75%'], []);
 
-  // Handle backdrop press
   const renderBackdrop = useCallback(
     (props: any) => (
       <BottomSheetBackdrop
@@ -152,20 +144,15 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
     []
   );
 
-
-  // Handle sheet changes
   const handleSheetChanges = useCallback((index: number) => {
     if (index === -1) {
-      // Sheet is closed, notify parent component
       onClose();
     }
   }, [onClose]);
 
-  // Handle item press
   const handleItemPress = useCallback((item: TemptationItem) => {
     onItemSelect(item);
     
-    // Show visual feedback and navigate after delay
     setTimeout(() => {
       if (onNavigate) {
         onNavigate(item);
@@ -174,7 +161,6 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
     }, 300);
   }, [onItemSelect, onNavigate]);
 
-  // Show/hide bottom sheet
   React.useEffect(() => {
     if (isVisible) {
       bottomSheetRef.current?.expand();
@@ -193,9 +179,9 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
       enablePanDownToClose
       backgroundStyle={styles.bottomSheetBackground}
       handleIndicatorStyle={styles.handleIndicator}
+      style={styles.bottomSheet}
     >
       <BottomSheetView style={styles.contentContainer}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
           <TouchableOpacity
@@ -209,7 +195,6 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Items List */}
         <View style={styles.itemsContainer}>
           {items.map((item, index) => (
             <AnimatedTemptationItem
@@ -226,6 +211,10 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
+  bottomSheet: {
+    zIndex: 9999,
+    elevation: 9999,
+  },
   bottomSheetBackground: {
     backgroundColor: '#000000',
     borderTopLeftRadius: 25,

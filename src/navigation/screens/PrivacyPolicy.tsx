@@ -6,13 +6,19 @@ import {
   TouchableOpacity,
   ScrollView,
   ImageBackground,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import RenderHTML from 'react-native-render-html';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { usePrivacyPolicy } from '../../hooks/usePrivacyPolicy';
 
 export const PrivacyPolicy: React.FC = () => {
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
+  const { content, loading, error } = usePrivacyPolicy();
 
   return (
     <ImageBackground
@@ -21,8 +27,6 @@ export const PrivacyPolicy: React.FC = () => {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container}>
-        
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -40,18 +44,46 @@ export const PrivacyPolicy: React.FC = () => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Page Title */}
           <Text style={styles.pageTitle}>Privacy Policy</Text>
 
-          {/* Content */}
           <View style={styles.contentContainer}>
-            <Text style={styles.contentText}>
-              We collect basic info like your name, email, and how you use the app. This helps us improve your experience and keep things running smoothly. We don't sell your data and only work with trusted services that help support the app.
-            </Text>
+            {loading && (
+              <View style={styles.loadingContainer}>
+                <LoadingSpinner size={40} color="#8B5CF6" />
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
+            )}
 
-            <Text style={[styles.contentText, styles.contentTextSpacing]}>
-              You can ask to see or delete your info anytime by emailing [your contact email]. We do our best to protect your data, but no system is perfect. This policy may change over time, and we'll let you know if anything major happens.
-            </Text>
+            {error && !loading && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {!loading && !error && content && (
+              <RenderHTML
+                contentWidth={width - 48}
+                source={{ html: content }}
+                baseStyle={styles.htmlContent}
+                tagsStyles={{
+                  p: styles.htmlParagraph,
+                  h1: styles.htmlHeading1,
+                  h2: styles.htmlHeading2,
+                  h3: styles.htmlHeading3,
+                  ul: styles.htmlList,
+                  ol: styles.htmlList,
+                  li: styles.htmlListItem,
+                  strong: styles.htmlStrong,
+                  em: styles.htmlEmphasis,
+                }}
+              />
+            )}
+
+            {!loading && !error && !content && (
+              <Text style={styles.contentText}>
+                We collect basic info like your name, email, and how you use the app. This helps us improve your experience and keep things running smoothly. We don't sell your data and only work with trusted services that help support the app.
+              </Text>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -114,8 +146,78 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontFamily: 'Roboto_400Regular',
   },
-  contentTextSpacing: {
-    marginTop: 20,
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#ffffff',
+    marginTop: 16,
+    fontFamily: 'Roboto_400Regular',
+  },
+  errorContainer: {
+    paddingVertical: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ff6b6b',
+    lineHeight: 24,
+    fontFamily: 'Roboto_400Regular',
+  },
+  htmlContent: {
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
+    fontFamily: 'Roboto_400Regular',
+  },
+  htmlParagraph: {
+    marginBottom: 16,
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
+    fontFamily: 'Roboto_400Regular',
+  },
+  htmlHeading1: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 16,
+    fontFamily: 'Roboto_600SemiBold',
+  },
+  htmlHeading2: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 12,
+    marginTop: 16,
+    fontFamily: 'Roboto_600SemiBold',
+  },
+  htmlHeading3: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 10,
+    marginTop: 12,
+    fontFamily: 'Roboto_600SemiBold',
+  },
+  htmlList: {
+    marginBottom: 16,
+  },
+  htmlListItem: {
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
+    marginBottom: 8,
+    fontFamily: 'Roboto_400Regular',
+  },
+  htmlStrong: {
+    fontWeight: '600',
+    fontFamily: 'Roboto_600SemiBold',
+  },
+  htmlEmphasis: {
+    fontStyle: 'italic',
   },
 });
 

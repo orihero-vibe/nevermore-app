@@ -42,6 +42,6 @@ const client = new Client()
 
 export const account = new Account(client);
 export const tablesDB = new TablesDB(client);
-export { ID };
+export { ID, client };
 
 export default appwriteConfig;

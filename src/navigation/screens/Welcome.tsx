@@ -31,12 +31,10 @@ export function Welcome() {
   }
 
   const handleCreateAccount = () => {
-    // Navigate to SignUp screen
     navigation.navigate(ScreenNames.SIGN_UP);
   };
 
   const handleSignIn = () => {
-    // Navigate to SignIn screen
     navigation.navigate(ScreenNames.SIGN_IN);
   };
 
@@ -49,15 +47,12 @@ export function Welcome() {
         resizeMode="cover"
       >
         <View style={styles.content}>
-          {/* Title */}
           <Text style={styles.title}>NEVERMORE</Text>
           
-          {/* Description */}
           <Text style={styles.description}>
             Let us know if you're on your own path to sobriety, or here to support someone else on theirs. Either way, you're in the right place.
           </Text>
           
-          {/* Create Account Button */}
           <Button
             title="Create Account"
             onPress={handleCreateAccount}
@@ -66,7 +61,6 @@ export function Welcome() {
             style={styles.createAccountButton}
           />
           
-          {/* Sign In Link */}
           <View style={styles.signInContainer}>
             <Text style={styles.signInText}>
               Already have an account?{' '}
@@ -84,7 +78,7 @@ export function Welcome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000', // Dark purple background
+    backgroundColor: '#000',
   },
   backgroundImage: {
     flex: 1,
@@ -100,7 +94,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'Cinzel_400Regular',
-    fontSize: 48,
+    fontSize: 40,
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 24,

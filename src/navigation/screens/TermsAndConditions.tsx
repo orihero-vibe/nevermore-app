@@ -6,13 +6,19 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    useWindowDimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import RenderHTML from 'react-native-render-html';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { useTermsAndConditions } from '../../hooks/useTermsAndConditions';
 
 export const TermsAndConditions: React.FC = () => {
   const navigation = useNavigation();
+  const { width } = useWindowDimensions();
+  const { content, loading, error } = useTermsAndConditions();
 
   return (
     <ImageBackground
@@ -21,7 +27,6 @@ export const TermsAndConditions: React.FC = () => {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -39,18 +44,46 @@ export const TermsAndConditions: React.FC = () => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Page Title */}
           <Text style={styles.pageTitle}>Terms & Conditions</Text>
 
-          {/* Content */}
           <View style={styles.contentContainer}>
-            <Text style={styles.contentText}>
-              By using Nevermore, you agree to be respectful and use the app as intended to help support sobriety, either your own or someone else's. You own anything you share, but you give us permission to use it in the app to help others. This space is built on trust, so any harmful or abusive behavior will be removed.
-            </Text>
+            {loading && (
+              <View style={styles.loadingContainer}>
+                <LoadingSpinner size={40} color="#8B5CF6" />
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
+            )}
 
-            <Text style={[styles.contentText, styles.contentTextSpacing]}>
-              This app does not offer medical or professional advice. If you're in crisis, please reach out to a licensed professional or support hotline. We may update these terms as the app grows, and using the app means you accept those changes. For questions, contact us at [your contact email].
-            </Text>
+            {error && !loading && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {!loading && !error && content && (
+              <RenderHTML
+                contentWidth={width - 48}
+                source={{ html: content }}
+                baseStyle={styles.htmlContent}
+                tagsStyles={{
+                  p: styles.htmlParagraph,
+                  h1: styles.htmlHeading1,
+                  h2: styles.htmlHeading2,
+                  h3: styles.htmlHeading3,
+                  ul: styles.htmlList,
+                  ol: styles.htmlList,
+                  li: styles.htmlListItem,
+                  strong: styles.htmlStrong,
+                  em: styles.htmlEmphasis,
+                }}
+              />
+            )}
+
+            {!loading && !error && !content && (
+              <Text style={styles.contentText}>
+                By using Nevermore, you agree to be respectful and use the app as intended to help support sobriety, either your own or someone else's. You own anything you share, but you give us permission to use it in the app to help others. This space is built on trust, so any harmful or abusive behavior will be removed.
+              </Text>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -113,8 +146,78 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontFamily: 'Roboto_400Regular',
   },
-  contentTextSpacing: {
-    marginTop: 20,
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#ffffff',
+    marginTop: 16,
+    fontFamily: 'Roboto_400Regular',
+  },
+  errorContainer: {
+    paddingVertical: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ff6b6b',
+    lineHeight: 24,
+    fontFamily: 'Roboto_400Regular',
+  },
+  htmlContent: {
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
+    fontFamily: 'Roboto_400Regular',
+  },
+  htmlParagraph: {
+    marginBottom: 16,
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
+    fontFamily: 'Roboto_400Regular',
+  },
+  htmlHeading1: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 16,
+    fontFamily: 'Roboto_600SemiBold',
+  },
+  htmlHeading2: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 12,
+    marginTop: 16,
+    fontFamily: 'Roboto_600SemiBold',
+  },
+  htmlHeading3: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 10,
+    marginTop: 12,
+    fontFamily: 'Roboto_600SemiBold',
+  },
+  htmlList: {
+    marginBottom: 16,
+  },
+  htmlListItem: {
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
+    marginBottom: 8,
+    fontFamily: 'Roboto_400Regular',
+  },
+  htmlStrong: {
+    fontWeight: '600',
+    fontFamily: 'Roboto_600SemiBold',
+  },
+  htmlEmphasis: {
+    fontStyle: 'italic',
   },
 });
 

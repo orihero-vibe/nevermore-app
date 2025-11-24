@@ -4,8 +4,6 @@ import { View, Text, StyleSheet, ImageBackground, StatusBar } from 'react-native
 export function CustomSplashScreen() {
   const [imageLoaded, setImageLoaded] = useState(false);
   
-  console.log('CustomSplashScreen rendering');
-  
   return (
     <View style={styles.container}>
       <StatusBar hidden />
@@ -14,15 +12,11 @@ export function CustomSplashScreen() {
         style={styles.backgroundImage}
         resizeMode="cover"
         onLoad={() => {
-          console.log('Image loaded successfully');
           setImageLoaded(true);
         }}
-        onError={(error) => {
-          console.log('Image error:', error);
+        onError={() => {
           setImageLoaded(false);
         }}
-        onLoadStart={() => console.log('Image loading started')}
-        onLoadEnd={() => console.log('Image loading ended')}
       >
         <View style={styles.content}>
           <Text style={styles.title}>
@@ -55,12 +49,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    // backgroundColor: 'rgba(45, 27, 105, 0.8)', // Semi-transparent overlay
   },
   title: {
-    fontSize: 48,
+    fontSize: 40,
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontFamily: 'Cinzel_400Regular',
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 2, height: 2 },

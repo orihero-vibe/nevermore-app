@@ -158,7 +158,11 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
   const unloadAudio = async () => {
     try {
       if (soundRef.current) {
-        await soundRef.current.unloadAsync();
+        // Check if sound is in a valid state before unloading
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          await soundRef.current.unloadAsync();
+        }
         soundRef.current = null;
       }
       setIsPlaying(false);
@@ -168,7 +172,14 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
       setIsMuted(false);
       previousVolumeRef.current = 1.0;
     } catch (error) {
-      console.error('Error unloading audio:', error);
+      // Silently handle unload errors and just reset the ref
+      soundRef.current = null;
+      setIsPlaying(false);
+      setCurrentTime('00:00');
+      setTotalTime('00:00');
+      setProgress(0);
+      setIsMuted(false);
+      previousVolumeRef.current = 1.0;
     }
   };
 

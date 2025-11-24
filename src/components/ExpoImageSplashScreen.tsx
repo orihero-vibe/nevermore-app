@@ -5,8 +5,6 @@ import { Image } from 'expo-image';
 export function ExpoImageSplashScreen() {
   const [imageLoaded, setImageLoaded] = useState(false);
   
-  console.log('ExpoImageSplashScreen rendering');
-  
   return (
     <View style={styles.container}>
       <StatusBar hidden />
@@ -15,11 +13,9 @@ export function ExpoImageSplashScreen() {
         style={styles.backgroundImage}
         contentFit="cover"
         onLoad={() => {
-          console.log('Expo Image loaded successfully');
           setImageLoaded(true);
         }}
-        onError={(error) => {
-          console.log('Expo Image error:', error);
+        onError={() => {
           setImageLoaded(false);
         }}
         transition={200}
@@ -61,10 +57,13 @@ const styles = StyleSheet.create({
     paddingBottom: 200,
   },
   title: {
-    fontSize: 48,
+    fontSize: 40,
+    fontFamily: 'Cinzel_400Regular',  
     color: '#FFFFFF',
-    fontFamily: 'Cinzel_400Regular',
     textAlign: 'center',
+    letterSpacing: 2,
+    paddingHorizontal: 20,
+    width: '100%',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
@@ -80,4 +79,3 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
 });
-

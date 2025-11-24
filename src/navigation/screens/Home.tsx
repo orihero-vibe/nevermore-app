@@ -3,21 +3,14 @@ import { Roboto_400Regular } from "@expo-google-fonts/roboto";
 import { useNavigation } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BlurView } from 'expo-blur';
 import {
-  BackdropFilter,
-  Blur,
   Canvas,
-  Circle,
   Image,
-  Path,
-  Rect,
-  rrect,
-  Text as SkiaText,
-  useFont,
   useImage,
 } from "@shopify/react-native-skia";
 import React, { useEffect, useState } from "react";
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -27,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MenuIcon from '../../assets/icons/menu';
+import ChevronDownIcon from '../../assets/icons/chevron-down';
 import { TemptationBottomSheet } from '../../components/TemptationBottomSheet';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { useCategories } from '../../hooks/useCategories';
@@ -155,9 +149,6 @@ export default function Home() {
 
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/main-bg.png'));
-  const font = useFont(Roboto_400Regular, 13);
-  const headerText = useFont(Cinzel_400Regular, 40);
-  const categoryFont = useFont(Cinzel_400Regular, 12);
   const insets = useSafeAreaInsets();
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
@@ -187,90 +178,59 @@ export default function Home() {
         <View style={styles.headerRight} />
       </Animated.View>
 
-      <Animated.View style={[styles.canvasTouchable, canvasAnimatedStyle]}>
-        <TouchableOpacity 
-          style={styles.canvasTouchable}
-          activeOpacity={1}
-          onPress={(event) => {
-            const { locationY } = event.nativeEvent;
-            const categoryIndex = Math.floor((locationY - 200) / 90);
-            if (categoryIndex >= 0 && categoryIndex < categories.length) {
-              handleCategoryPress(categories[categoryIndex], categoryIndex);
-            }
-          }}
-        >
-          <Canvas style={styles.canvas}>
-            <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
-
-            <SkiaText
-              text="40 TEMPTATIONS"
-              font={headerText}
-              color="white"
-              x={width / 2 - 175}
-              y={150}
-            />
-
-            {categories.map((cat, i) => {
-              const top = 200 + i * 90;
-              const cardHeight = 70;
-              const cardWidth = width - 60;
-              const chevronX = 30 + cardWidth - 25;
-              const chevronY = top + cardHeight / 2;
-
-              return (
-                <BackdropFilter
-                  key={cat.$id}
-                  filter={<Blur blur={5} />}
-                  clip={rrect({ x: 30, y: top, width: cardWidth, height: cardHeight }, 12, 12)}
-                >
-                  <Rect
-                    x={30}
-                    y={top}
-                    width={cardWidth}
-                    height={cardHeight}
-                    color={'rgba(255,255,255,0.1)'}
-                  />
-                  <SkiaText
-                    x={60}
-                    y={top + cardHeight / 2 + 6}
-                    text={getCategoryName(cat)}
-                    color={'white'}
-                    font={categoryFont}
-                  />
-
-                  <BackdropFilter
-                    filter={<Blur blur={5} />}
-                    clip={rrect({ x: chevronX - 12, y: chevronY - 12, width: 24, height: 24 }, 12, 12)}
-                  >
-                    <Circle
-                      cx={chevronX}
-                      cy={chevronY}
-                      r={12}
-                      color={'rgba(255,255,255,0.2)'}
-                    />
-                  </BackdropFilter>
-
-                  <Path
-                    path={`M ${chevronX - 4} ${chevronY - 2} L ${chevronX} ${chevronY + 2} L ${chevronX + 4} ${chevronY - 2}`}
-                    color={'white'}
-                    style="stroke"
-                    strokeWidth={1.5}
-                  />
-                </BackdropFilter>
-              );
-            })}
-          </Canvas>
-        </TouchableOpacity>
+      <Animated.View style={[styles.backgroundContainer, canvasAnimatedStyle]}>
+        <Canvas style={styles.backgroundCanvas}>
+          <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
+        </Canvas>
       </Animated.View>
 
-      <TemptationBottomSheet
-        isVisible={bottomSheetVisible}
-        onClose={handleCloseBottomSheet}
-        title={selectedCategory ? getCategoryName(selectedCategory) : ''}
-        items={selectedCategory ? categoryContent[getCategoryName(selectedCategory)] || [] : []}
-        onItemSelect={handleTemptationSelect}
-        onNavigate={handleNavigateToDetails}
-      />
+      <Animated.View 
+        style={[styles.scrollContainer, canvasAnimatedStyle]}
+        pointerEvents={bottomSheetVisible ? 'none' : 'auto'}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={!bottomSheetVisible}
+        >
+          <View style={styles.titleContainer}>
+            <Text style={styles.titleText}>40 TEMPTATIONS</Text>
+          </View>
+
+          {categories.map((cat, i) => {
+            return (
+              <TouchableOpacity
+                key={cat.$id}
+                style={styles.categoryCard}
+                activeOpacity={0.8}
+                onPress={() => handleCategoryPress(cat, i)}
+                disabled={bottomSheetVisible}
+              >
+                <BlurView experimentalBlurMethod={'none'} intensity={25} style={styles.blurContainer} tint="dark">
+                  <View style={styles.cardContent}>
+                    <Text style={styles.categoryText}>{getCategoryName(cat)}</Text>
+                    <View style={styles.arrowButton}>
+                      <ChevronDownIcon />
+                    </View>
+                  </View>
+                </BlurView>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </Animated.View>
+
+      <View style={styles.bottomSheetWrapper}>
+        <TemptationBottomSheet
+          isVisible={bottomSheetVisible}
+          onClose={handleCloseBottomSheet}
+          title={selectedCategory ? getCategoryName(selectedCategory) : ''}
+          items={selectedCategory ? categoryContent[getCategoryName(selectedCategory)] || [] : []}
+          onItemSelect={handleTemptationSelect}
+          onNavigate={handleNavigateToDetails}
+        />
+      </View>
     </View>
   );
 }
@@ -304,14 +264,79 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 40,
   },
-  canvasTouchable: {
-    flex: 1,
-  },
-  canvas: {
-    flex: 1,
-  },
-  categoryContainer: {
+  backgroundContainer: {
     position: 'absolute',
-    left: 30,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backgroundCanvas: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 30,
+    paddingTop: 150,
+    paddingBottom: 40,
+  },
+  titleContainer: {
+    marginBottom: 30,
+    alignItems: 'center',
+  },
+  titleText: {
+    color: '#fff',
+    fontSize: 34,
+    fontFamily: 'Cinzel_400Regular',
+    textAlign: 'center',
+  },
+  categoryCard: {
+    marginBottom: 20,
+    height: 70,
+    overflow: 'hidden',
+    borderRadius: 12,
+  },
+  blurContainer: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  cardContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  categoryText: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'Cinzel_400Regular',
+    textTransform: 'uppercase',
+    flex: 1,
+  },
+  arrowButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomSheetWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10000,
+    elevation: 10000,
+    pointerEvents: 'box-none',
   },
 });

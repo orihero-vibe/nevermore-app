@@ -17,9 +17,6 @@ export interface Content {
   [key: string]: unknown;
 }
 
-/**
- * Gets the category ID from a content document
- */
 export function getContentCategoryId(content: Content): string | null {
   if (!content.category) return null;
   if (typeof content.category === 'string') return content.category;
@@ -45,33 +42,17 @@ class ContentService {
     }
   }
 
-  /**
-   * Fetches all content from Appwrite
-   * @returns Promise<Content[]> Array of content documents
-   */
   async getContent(): Promise<Content[]> {
     this.validateConfig();
-
-    console.log('Fetching content from:', {
-      databaseId: APPWRITE_DATABASE_ID,
-      collectionId: APPWRITE_CONTENT_COLLECTION_ID,
-    });
 
     try {
       const response = await tablesDB.listRows({
         databaseId: APPWRITE_DATABASE_ID,
         tableId: APPWRITE_CONTENT_COLLECTION_ID,
         queries: [
-          Query.limit(1000), // Fetch up to 1000 items
+          Query.limit(1000),
         ],
       });
-
-      console.log('Successfully fetched content:', response.rows.length);
-
-      if (response.rows.length > 0) {
-        console.log('Sample content structure:', Object.keys(response.rows[0]));
-        console.log('Sample content data:', response.rows[0]);
-      }
 
       return response.rows as unknown as Content[];
     } catch (error: unknown) {
@@ -109,15 +90,8 @@ class ContentService {
     }
   }
 
-  /**
-   * Fetches content filtered by category ID
-   * @param categoryId The category ID to filter by
-   * @returns Promise<Content[]> Array of content documents
-   */
   async getContentByCategory(categoryId: string): Promise<Content[]> {
     this.validateConfig();
-
-    console.log('Fetching content for category:', categoryId);
 
     try {
       const response = await tablesDB.listRows({
@@ -129,8 +103,6 @@ class ContentService {
         ],
       });
 
-      console.log(`Successfully fetched ${response.rows.length} content items for category ${categoryId}`);
-
       return response.rows as unknown as Content[];
     } catch (error: unknown) {
       console.error('Error fetching content by category:', error);
@@ -138,11 +110,6 @@ class ContentService {
     }
   }
 
-  /**
-   * Fetches a single content item by ID
-   * @param contentId The content ID
-   * @returns Promise<Content | null> Content document or null
-   */
   async getContentById(contentId: string): Promise<Content | null> {
     try {
       this.validateConfig();
@@ -160,15 +127,8 @@ class ContentService {
     }
   }
 
-  /**
-   * Fetches content filtered by type
-   * @param type The content type to filter by (e.g., 'forty_day_journey')
-   * @returns Promise<Content[]> Array of content documents
-   */
   async getContentByType(type: string): Promise<Content[]> {
     this.validateConfig();
-
-    console.log('Fetching content for type:', type);
 
     try {
       const response = await tablesDB.listRows({
@@ -180,8 +140,6 @@ class ContentService {
         ],
       });
 
-      console.log(`Successfully fetched ${response.rows.length} content items for type ${type}`);
-
       return response.rows as unknown as Content[];
     } catch (error: unknown) {
       console.error('Error fetching content by type:', error);
@@ -189,14 +147,8 @@ class ContentService {
     }
   }
 
-  /**
-   * Fetches FortyDay journey content (type: forty_day_journey)
-   * @returns Promise<Content[]> Array of FortyDay content documents
-   */
   async getFortyDayContent(): Promise<Content[]> {
     this.validateConfig();
-
-    console.log('Fetching FortyDay journey content');
 
     try {
       const response = await tablesDB.listRows({
@@ -208,13 +160,6 @@ class ContentService {
         ],
       });
 
-      console.log(`Successfully fetched ${response.rows.length} FortyDay journey items`);
-
-      if (response.rows.length > 0) {
-        console.log('Sample FortyDay structure:', Object.keys(response.rows[0]));
-        console.log('First document:', response.rows[0]);
-      }
-
       return response.rows as unknown as Content[];
     } catch (error: unknown) {
       console.error('Error fetching FortyDay content:', error);
@@ -222,16 +167,8 @@ class ContentService {
     }
   }
 
-  /**
-   * Fetches content filtered by category and role
-   * @param categoryId The category ID to filter by
-   * @param role The role to filter by ('recovery' or 'support')
-   * @returns Promise<Content[]> Array of content documents
-   */
   async getContentByCategoryAndRole(categoryId: string, role: string): Promise<Content[]> {
     this.validateConfig();
-
-    console.log('Fetching content for category and role:', { categoryId, role });
 
     try {
       const response = await tablesDB.listRows({
@@ -243,8 +180,6 @@ class ContentService {
           Query.limit(1000),
         ],
       });
-
-      console.log(`Successfully fetched ${response.rows.length} content items for category ${categoryId} and role ${role}`);
 
       return response.rows as unknown as Content[];
     } catch (error: unknown) {

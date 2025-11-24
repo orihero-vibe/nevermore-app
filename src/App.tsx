@@ -14,10 +14,9 @@ import { useAuthStore } from './store/authStore';
 
 SplashScreen.preventAutoHideAsync();
 
-const prefix = createURL('/');
-
 export function App() {
   const colorScheme = useColorScheme();
+  const prefix = React.useMemo(() => createURL('/'), []);
   const [cinzelFontsLoaded] = useFonts({
     Cinzel_400Regular,
     Cinzel_600SemiBold,
@@ -95,9 +94,6 @@ export function App() {
         linking={{
           enabled: 'auto',
           prefixes: [prefix],
-        }}
-        onReady={() => {
-          SplashScreen.hideAsync();
         }}
       />
     </GestureHandlerRootView>

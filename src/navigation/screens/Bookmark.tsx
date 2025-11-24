@@ -1,18 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { DrawerActions } from '@react-navigation/native';
 import {
-  BackdropFilter,
-  Blur,
   Canvas,
-  Circle,
   Image,
-  Path,
-  Rect,
-  rrect,
   Text as SkiaText,
   useFont,
   useImage,
@@ -23,7 +17,6 @@ import Animated, {
   withTiming, 
   withDelay,
 } from 'react-native-reanimated';
-import { Roboto_400Regular } from '@expo-google-fonts/roboto';
 import { Cinzel_400Regular } from '@expo-google-fonts/cinzel';
 import { BlurView } from 'expo-blur';
 import MenuIcon from '../../assets/icons/menu';
@@ -46,7 +39,6 @@ export function Bookmark() {
   const navigation = useNavigation<BookmarkNavigationProp>();
   
   const { 
-    bookmarks, 
     toggleBookmark, 
     activeTab: storeActiveTab, 
     setActiveTab: setStoreActiveTab,
@@ -57,9 +49,7 @@ export function Bookmark() {
   
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/main-bg.png'));
-  const font = useFont(Roboto_400Regular, 13);
   const headerText = useFont(Cinzel_400Regular, 40);
-  const cardFont = useFont(Cinzel_400Regular, 12);
   const insets = useSafeAreaInsets();
 
   // Reanimated shared values for entrance animations
@@ -194,49 +184,19 @@ export function Bookmark() {
               text="BOOKMARK"
               font={headerText}
               color="white"
-              x={width / 2 - 100}
+              x={headerText ? width / 2 - (headerText.getTextWidth("BOOKMARK") / 2) : width / 2 - 100}
               y={150}
             />
 
             {tabSwitcher.containerElement}
             {tabSwitcher.indicatorElement}
             {tabSwitcher.textElements}
-            
-            {filteredBookmarks.map((bookmark, index) => {
-              const top = 240 + index * 90;
-              const cardHeight = 70;
-              const cardWidth = width - 60;
-
-                return (
-                  <BackdropFilter
-                    key={bookmark.id}
-                    filter={<Blur blur={5} />}
-                    clip={rrect({ x: 30, y: top, width: cardWidth, height: cardHeight }, 12, 12)}
-                  >
-                    <Rect
-                      x={30}
-                      y={top}
-                      width={cardWidth}
-                      height={cardHeight}
-                      color={'rgba(255,255,255,0.1)'}
-                    />
-                    <SkiaText
-                      x={60}
-                      y={top + cardHeight / 2 + 6}
-                      text={bookmark.title}
-                      color={'white'}
-                      font={cardFont}
-                    />
-
-                  </BackdropFilter>
-                );
-              })}
           </Canvas>
           
           {tabSwitcher.touchableElements}
         </TouchableOpacity>
 
-        {filteredBookmarks.length ===0 ? (
+        {filteredBookmarks.length === 0 ? (
           <View style={styles.emptyStateContainer}>
             <BlurView intensity={20} tint="dark" style={styles.emptyStateCard}>
               <Text style={styles.emptyStateTitle}>
@@ -254,32 +214,34 @@ export function Bookmark() {
               </View>
             </BlurView>
           </View>
-        ): filteredBookmarks.map((bookmark, index) => {
-          const top = 240 + index * 90;
-          const cardHeight = 70;
-          const cardWidth = width - 60;
-            
-            return (
-              <View
-                key={`touch-${bookmark.id}`}
-                style={[
-                  styles.bookmarkIconTouchable,
-                  { 
-                    top: top + cardHeight / 2 - 20,
-                    right: (width - (30 + cardWidth)) + 10,
-                  }
-                ]}
+        ) : (
+          <FlatList
+            data={filteredBookmarks}
+            keyExtractor={(item) => item.id}
+            style={styles.flatListContainer}
+            contentContainerStyle={styles.flatListContent}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item: bookmark, index }) => (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleBookmarkPress(bookmark, index)}
+                style={styles.bookmarkCardContainer}
               >
-                <TouchableOpacity
-                  onPress={() => handleRemoveBookmark(bookmark.id, bookmark.title, index)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  style={styles.bookmarkIconButton}
-                >
-                  <BookmarkActiveIcon width={24} height={24} color="#965CDF" />
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+                <BlurView intensity={20} tint="dark" style={styles.bookmarkBlur}>
+                  <Text style={styles.bookmarkTitle}>{bookmark.title}</Text>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveBookmark(bookmark.id, bookmark.title, index)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={styles.bookmarkIconButton}
+                  >
+                    <BookmarkActiveIcon width={24} height={24} color="#965CDF" />
+                  </TouchableOpacity>
+                </BlurView>
+              </TouchableOpacity>
+            )}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          />
+        )}
         </Animated.View>
     </View>
   );
@@ -320,16 +282,41 @@ const styles = StyleSheet.create({
   canvas: {
     flex: 1,
   },
-  bookmarkIconTouchable: {
+  flatListContainer: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+    top: 240,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  flatListContent: {
+    paddingHorizontal: 30,
+    paddingBottom: 30,
+  },
+  bookmarkCardContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    height: 70,
+  },
+  bookmarkBlur: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  bookmarkTitle: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'Cinzel_400Regular',
+    flex: 1,
   },
   bookmarkIconButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
+  },
+  separator: {
+    height: 20,
   },
   emptyStateContainer: {
     position: 'absolute',

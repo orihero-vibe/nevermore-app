@@ -2,8 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, StatusBar } from 'react-native';
 
 export function SimpleSplashScreen() {
-  console.log('SimpleSplashScreen rendering');
-  
   return (
     <View style={styles.container}>
       <StatusBar hidden />
@@ -25,9 +23,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 48,
+    fontSize: 40,
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontFamily: 'Cinzel_400Regular',
     textAlign: 'center',
     marginBottom: 20,
   },

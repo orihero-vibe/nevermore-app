@@ -4,11 +4,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Canvas,
   Image as SkiaImage,
+  Text as SkiaText,
   useFont,
   useImage
 } from '@shopify/react-native-skia';
 import React, { useState } from 'react';
 import {
+  Alert,
   Dimensions,
   FlatList,
   StyleSheet,
@@ -16,11 +18,13 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import * as Sharing from 'expo-sharing';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import BookmarkIcon from '../../assets/icons/bookmark';
 import BookmarkActiveIcon from '../../assets/icons/bookmark-active';
+import DocumentIcon from '../../assets/icons/document';
 import { MediaControls } from '../../components/MediaControls';
 import { ReflectionQuestionItem } from '../../components/ReflectionQuestionItem';
 import { ScreenNames } from '../../constants/ScreenNames';
@@ -32,6 +36,8 @@ import { useContentDetails, useContentByCategoryAndRole } from '../../hooks/useC
 import { useEntranceAnimations } from '../../hooks/useEntranceAnimations';
 import { useAudioPlaylist } from '../../hooks/useAudioPlaylist';
 import { useContentPresentation } from '../../hooks/useContentPresentation';
+import { storageService } from '../../services/storage.service';
+import { getContentCategoryId } from '../../services/content.service';
 
 type RootStackParamList = {
   TemptationDetails: {
@@ -49,21 +55,26 @@ export default function TemptationDetails() {
   const route = useRoute<TemptationDetailsRouteProp>();
   const insets = useSafeAreaInsets();
 
-  const { contentId, temptationTitle, categoryId } = route.params;
+  const { contentId, temptationTitle, categoryId: routeCategoryId } = route.params;
   
-  // First, fetch the initial content to determine its role
   const { 
     content: initialContent, 
     loading: initialLoading 
   } = useContentDetails(contentId);
   
-  // Use ref to track if we've initialized the role (doesn't trigger re-renders)
   const hasInitializedRef = React.useRef(false);
   
-  // Initialize activeButton based on initial content's role
+  // Extract categoryId from content if not provided in route params
+  const extractedCategoryId = React.useMemo(() => {
+    if (routeCategoryId) return routeCategoryId;
+    if (initialContent) {
+      return getContentCategoryId(initialContent);
+    }
+    return null;
+  }, [routeCategoryId, initialContent]);
+  
   const [activeButton, setActiveButton] = useState<'recovery' | 'support'>('recovery');
   
-  // Set initial role based on first content's role (only once)
   React.useEffect(() => {
     if (initialContent && !hasInitializedRef.current) {
       const initialRole = initialContent.role?.toLowerCase();
@@ -74,30 +85,52 @@ export default function TemptationDetails() {
     }
   }, [initialContent]);
   
-  // Custom hooks - fetch content by category and role (only when categoryId is provided)
   const { 
     content: roleBasedContent, 
     loading: roleBasedLoading 
-  } = useContentByCategoryAndRole(categoryId || null, activeButton);
+  } = useContentByCategoryAndRole(extractedCategoryId || null, activeButton);
   
-  // Determine which content to use
-  const content = categoryId 
+  const content = extractedCategoryId 
     ? (roleBasedContent && roleBasedContent.length > 0 ? roleBasedContent[0] : null)
     : initialContent;
-  const loading = categoryId ? roleBasedLoading : initialLoading;
+  const loading = extractedCategoryId ? roleBasedLoading : initialLoading;
   
   const { headerAnimatedStyle, canvasAnimatedStyle, contentAnimatedStyle } = useEntranceAnimations();
   const { selectedAudioIndex, audioPlayer, handleAudioSelect, loadPlaylist } = useAudioPlaylist();
   const { transcript, displayImage, audioFiles } = useContentPresentation(content);
   
-  // Bookmark store
   const { toggleBookmark, isBookmarked } = useBookmarkStore();
   const isCurrentlyBookmarked = content ? isBookmarked(content.$id) : false;
 
-  // Load playlist when content is available
+  const transcriptFileUrl = transcript || null;
+  
+  const [transcriptFileName, setTranscriptFileName] = useState<string>('Transcript');
+
+  React.useEffect(() => {
+    if (transcriptFileUrl) {
+      storageService.getFileName(transcriptFileUrl)
+        .then(setTranscriptFileName)
+        .catch(() => {
+          setTranscriptFileName('Transcript');
+        });
+    }
+  }, [transcriptFileUrl]);
+
+  const handleTranscriptDownload = React.useCallback(async () => {
+    if (!transcriptFileUrl) {
+      Alert.alert('No File', 'No transcript file available for download.');
+      return;
+    }
+
+    try {
+      await storageService.downloadFile(transcriptFileUrl);
+    } catch (error) {
+      console.error('Failed to download transcript file:', error);
+    }
+  }, [transcriptFileUrl]);
+
   const audioFilesRef = React.useRef<string[]>([]);
   React.useEffect(() => {
-    // Only update if the audio files have actually changed
     const hasChanged = audioFiles.length !== audioFilesRef.current.length || 
                        audioFiles.some((file, idx) => file !== audioFilesRef.current[idx]);
     
@@ -109,6 +142,7 @@ export default function TemptationDetails() {
 
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
+  const suggestionFont = useFont(Roboto_400Regular, 14);
 
   const handleBack = () => {
     navigation.goBack();
@@ -118,7 +152,6 @@ export default function TemptationDetails() {
     setActiveButton(buttonId);
   };
 
-  // Use the tab switcher hook
   const tabSwitcher = useTabSwitcher({
     tabs: ['Recovery', 'Support'],
     activeTab: activeButton === 'recovery' ? 'Recovery' : 'Support',
@@ -127,15 +160,14 @@ export default function TemptationDetails() {
       handleButtonPress(newButton);
     },
     y: 100,
+    enabled: !!extractedCategoryId,
   });
 
   const handleBookmarkToggle = () => {
     if (!content) return;
-    // Pass the content role to the bookmark for filtering
     toggleBookmark(content.$id, content.title || temptationTitle, content.role);
   };
 
-  // Display loading state
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -144,7 +176,6 @@ export default function TemptationDetails() {
     );
   }
 
-  // Display error state if content not found
   if (!content) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -158,14 +189,12 @@ export default function TemptationDetails() {
 
   return (
     <View style={styles.container}>
-      {/* Fixed Background */}
       <View style={styles.backgroundContainer}>
         <Canvas style={styles.backgroundCanvas}>
           <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
         </Canvas>
       </View>
 
-      {/* Header */}
       <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <ArrowLeftIcon />
@@ -179,19 +208,35 @@ export default function TemptationDetails() {
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
-        <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
-          <Canvas style={styles.canvas}>
-            {/* Tab Switcher Elements */}
-            {tabSwitcher.containerElement}
-            {tabSwitcher.indicatorElement}
-            {tabSwitcher.textElements}
-          </Canvas>
-          {/* Tab Touchable Elements - inside ScrollView so they scroll with content */}
-          {tabSwitcher.touchableElements}
-        </Animated.View>
+        {extractedCategoryId && (
+          <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
+            <Canvas style={styles.canvas}>
+              {suggestionFont && (
+                <>
+                  <SkiaText
+                    x={(width - suggestionFont.getTextWidth('We suggest beginning with Recovery and then moving')) / 2 - 5}
+                    y={50}
+                    text="We suggest beginning with Recovery and then moving"
+                    font={suggestionFont}
+                    color="white"
+                  />
+                  <SkiaText
+                    x={(width - suggestionFont.getTextWidth('to Support whenever you feel ready.')) / 2 - 5}
+                    y={70}
+                    text="to Support whenever you feel ready."
+                    font={suggestionFont}
+                    color="white"
+                  />
+                </>
+              )}
+              {tabSwitcher.containerElement}
+              {tabSwitcher.indicatorElement}
+              {tabSwitcher.textElements}
+            </Canvas>
+            {tabSwitcher.touchableElements}
+          </Animated.View>
+        )}
 
-
-        {/* Main Title */}
         <View style={styles.mainTitleContainer}>
           <Text style={styles.mainTitle}>{content.title}</Text>
           <TouchableOpacity style={styles.bookmarkButton} onPress={handleBookmarkToggle}>
@@ -203,7 +248,6 @@ export default function TemptationDetails() {
           </TouchableOpacity>
         </View>
 
-        {/* Media Player */}
         <MediaControls
           isPlaying={audioPlayer.isPlaying}
           isLoading={audioPlayer.isLoading}
@@ -217,40 +261,36 @@ export default function TemptationDetails() {
           onSeek={audioPlayer.seekTo}
         />
 
-        {/* Image */}
         {displayImage && (
           <View style={styles.imageContainer}>
             <Image source={{ uri: displayImage }} style={styles.imagePlaceholder} />
           </View>
         )}
 
-        {/* Transcript Section */}
         {transcript && (
           <View style={styles.transcriptSection}>
             <View style={styles.transcriptHeader}>
               <Text style={styles.sectionTitle}>Transcript</Text>
-              <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate(
-                    // @ts-ignore: using string enum for screen name
-                    ScreenNames.TRANSCRIPT as never,
-                    {
-                      title: content.title,
-                      transcript: transcript
-                    } as never
-                  )
-                }
-              >
-                <Text style={styles.viewAllLink}>View all</Text>
-              </TouchableOpacity>
             </View>
-            <Text style={styles.transcriptText} numberOfLines={4}>
-              {transcript}
-            </Text>
+            <TouchableOpacity 
+              style={styles.transcriptActions} 
+              onPress={handleTranscriptDownload}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.transcriptText} numberOfLines={4}>
+                {transcriptFileName}
+              </Text>
+              <TouchableOpacity 
+                style={styles.downloadButton} 
+                onPress={handleTranscriptDownload}
+                activeOpacity={0.7}
+              >
+                <DocumentIcon color="#8B5CF6" />
+              </TouchableOpacity>
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* Reflection Questions */}
         {audioFiles.length > 0 && (
           <View style={styles.reflectionSection}>
             <Text style={styles.sectionTitle}>Reflection Questions</Text>
@@ -337,9 +377,10 @@ const styles = StyleSheet.create({
     height: 160,
     position: 'relative',
     overflow: 'visible',
-    marginTop: 20,
+    marginTop: 90,
   },
   canvas: {
+    width: '100%',
     height: 300,
   },
   content: {
@@ -363,53 +404,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 10,
   },
-  mediaPlayerCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-  },
-  mediaControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  playButtonMain: {
-    padding: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stopButton: {
-    padding: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  progressContainer: {
-    marginTop: 10,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#333333',
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: 4,
-    width: '5%',
-    backgroundColor: '#8B5CF6',
-    borderRadius: 2,
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  timeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: 'Roboto_400Regular',
-  },
   imageContainer: {
     marginBottom: 20,
     paddingHorizontal: 20,
@@ -420,25 +414,28 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     backgroundColor: '#1A1A1A',
     borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-
-  },
-  imagePlaceholderText: {
-    color: '#666666',
-    fontSize: 14,
-    fontFamily: 'Roboto_400Regular',
-    paddingHorizontal: 20,
   },
   transcriptSection: {
     marginBottom: 30,
+    paddingHorizontal: 20,
   },
   transcriptHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
-    paddingHorizontal: 20,
+  },
+  transcriptActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    height: 60,
+  },
+  downloadButton: {
+    padding: 4,
   },
   sectionTitle: {
     color: '#FFFFFF',
@@ -446,18 +443,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Roboto_400Regular',
   },
-  viewAllLink: {
-    color: '#8B5CF6',
-    fontSize: 14,
-    fontFamily: 'Roboto_400Regular',
-    paddingHorizontal: 20,
-  },
   transcriptText: {
     color: '#FFFFFF',
     fontSize: 14,
     lineHeight: 20,
     fontFamily: 'Roboto_400Regular',
-    paddingHorizontal: 20,
   },
   reflectionSection: {
     marginBottom: 30,

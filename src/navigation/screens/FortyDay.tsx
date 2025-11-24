@@ -17,7 +17,8 @@ import Carousel from 'react-native-reanimated-carousel';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  withDelay,
+  withTiming,
 } from 'react-native-reanimated';
 import { useFortyDayStore } from '../../store/fortyDayStore';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
@@ -55,10 +56,43 @@ export const FortyDay = () => {
   });
   
   const audioPlayer = useAudioPlayer();
+  
+  // Animation values matching Home screen pattern
+  const canvasTranslateY = useSharedValue(50);
+  const canvasOpacity = useSharedValue(0);
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(-30);
 
   useEffect(() => {
     loadFortyDayContent();
   }, []);
+
+  // Animation effect - start animations immediately
+  useEffect(() => {
+    // Always animate header immediately on mount
+    headerOpacity.value = withTiming(1, { duration: 600 });
+    headerTranslateY.value = withTiming(0, { duration: 600 });
+    
+    // Animate content when data is ready
+    if (days.length > 0) {
+      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+    }
+  }, [days.length]);
+
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: headerOpacity.value,
+      transform: [{ translateY: headerTranslateY.value }],
+    };
+  });
+
+  const canvasAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: canvasOpacity.value,
+      transform: [{ translateY: canvasTranslateY.value }],
+    };
+  });
 
   useEffect(() => {
     if (days.length > 0) {
@@ -72,7 +106,6 @@ export const FortyDay = () => {
   useEffect(() => {
     const currentDayData = days[activeIndex];
     if (currentDayData?.audioUrl) {
-      console.log('Loading audio for day', currentDayData.day, ':', currentDayData.audioUrl);
       audioPlayer.loadAudio(currentDayData.audioUrl);
     } else {
       audioPlayer.unloadAudio();
@@ -102,64 +135,67 @@ export const FortyDay = () => {
     
     return (
       <View style={styles.carouselItemContainer}>
-        <BlurView intensity={20} tint="dark" style={styles.card}>
-          <View style={styles.cardHeader}>
-            <TouchableOpacity style={styles.flagButton}>
-              <FlagIcon width={30} height={30} />
-            </TouchableOpacity>
-          </View>
+        <View style={styles.card}>
+          <BlurView
+            intensity={20}
+            tint="dark"
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={styles.cardOverlay} />
+          <View style={styles.cardContentWrapper}>
+            <View style={styles.cardHeader}>
+              <TouchableOpacity style={styles.flagButton}>
+                <FlagIcon width={30} height={30} />
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.cardContent}>
-            <Text style={styles.dayLabel}>DAY</Text>
-            <Text style={styles.dayNumber}>{item.day}</Text>
-            <Text style={styles.completionText}>
-              Completed: <Text style={styles.completionPercentage}>{item.completionPercentage}%</Text>
-            </Text>
-          </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.dayLabel}>DAY</Text>
+              <Text style={styles.dayNumber}>{item.day}</Text>
+              <Text style={styles.completionText}>
+                Completed: <Text style={styles.completionPercentage}>{item.completionPercentage}%</Text>
+              </Text>
+            </View>
 
-          <View style={styles.mediaControls}>
-            <TouchableOpacity 
-              style={[
-                styles.mediaButton,
-                !item.audioUrl && styles.mediaButtonDisabled
-              ]}
-              onPress={() => isCurrentItem && item.audioUrl && audioPlayer.togglePlayPause()}
-              disabled={!item.audioUrl}
-            >
-              {isCurrentItem && audioPlayer.isPlaying ? (
-                <PauseIcon width={20} height={20} />
-              ) : (
-                <PlayIcon width={20} height={20} />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[
-                styles.mediaButton,
-                !item.audioUrl && styles.mediaButtonDisabled
-              ]}
-              onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
-              disabled={!item.audioUrl}
-            >
-              {isCurrentItem && audioPlayer.isMuted ? (
-                <VolumeMutedIcon width={20} height={20} />
-              ) : (
-                <VolumeIcon width={20} height={20} />
-              )}
-            </TouchableOpacity>
+            <View style={styles.mediaControls}>
+              <TouchableOpacity 
+                style={[
+                  styles.mediaButton,
+                  !item.audioUrl && styles.mediaButtonDisabled
+                ]}
+                onPress={() => isCurrentItem && item.audioUrl && audioPlayer.togglePlayPause()}
+                disabled={!item.audioUrl}
+              >
+                {isCurrentItem && audioPlayer.isPlaying ? (
+                  <PauseIcon width={20} height={20} />
+                ) : (
+                  <PlayIcon width={20} height={20} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[
+                  styles.mediaButton,
+                  !item.audioUrl && styles.mediaButtonDisabled
+                ]}
+                onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
+                disabled={!item.audioUrl}
+              >
+                {isCurrentItem && audioPlayer.isMuted ? (
+                  <VolumeMutedIcon width={20} height={20} />
+                ) : (
+                  <VolumeIcon width={20} height={20} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </BlurView>
+        </View>
       </View>
     );
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/main-bg.png')}
-      style={styles.container}
-      resizeMode="cover"
-    >
-
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <Animated.View style={[styles.header, headerAnimatedStyle]}>
         <TouchableOpacity 
           style={styles.menuButton}
           onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
@@ -168,128 +204,141 @@ export const FortyDay = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nevermore</Text>
         <View style={styles.menuButton} />
-      </View>
+      </Animated.View>
 
-      <Text style={styles.mainTitle}>40 DAY JOURNEY</Text>
+      <Animated.View style={[styles.backgroundContainer, canvasAnimatedStyle]}>
+        <ImageBackground
+          source={require('../../assets/main-bg.png')}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        />
+      </Animated.View>
 
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
-          <Text style={styles.loadingText}>Loading your journey...</Text>
-        </View>
-      )}
+      <Animated.View style={[styles.scrollContainer, canvasAnimatedStyle]}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
+          showsVerticalScrollIndicator={false}
+        >
+        <View style={styles.headerSpacer} />
+        <Text style={styles.mainTitle}>40 DAY JOURNEY</Text>
 
-      {error && !loading && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={loadFortyDayContent}
-          >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#8B5CF6" />
+            <Text style={styles.loadingText}>Loading your journey...</Text>
+          </View>
+        )}
 
-      {!loading && !error && days.length > 0 && (
-        <>
-          <View style={styles.carouselContainer}>
-            <TouchableOpacity
-              style={[styles.navButton, styles.navButtonLeft]}
-              onPress={handlePrevious}
-              disabled={activeIndex === 0}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={loadFortyDayContent}
             >
-              <ChevronLeftIcon width={24} height={24} />
+              <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
+          </View>
+        )}
 
-            <View style={styles.carouselWrapper}>
-              <Carousel
-                ref={carouselRef}
-                width={CARD_WIDTH}
-                height={280}
-                data={days}
-                renderItem={renderCarouselItem}
-                onSnapToItem={(index) => {
-                  setActiveIndex(index);
-                  setCurrentDay(days[index].day);
-                }}
-                defaultIndex={days.length > 0 ? Math.max(0, Math.min(currentDay - 1, days.length - 1)) : 0}
-                loop={false}
-                enabled={true}
-                style={styles.carousel}
-              />
+        {!loading && !error && days.length > 0 && (
+          <>
+            <View style={styles.carouselContainer}>
+              <TouchableOpacity
+                style={[styles.navButton, styles.navButtonLeft]}
+                onPress={handlePrevious}
+                disabled={activeIndex === 0}
+              >
+                <ChevronLeftIcon width={24} height={24} />
+              </TouchableOpacity>
+
+              <View style={styles.carouselWrapper}>
+                <Carousel
+                  ref={carouselRef}
+                  width={CARD_WIDTH}
+                  height={280}
+                  data={days}
+                  renderItem={renderCarouselItem}
+                  onSnapToItem={(index) => {
+                    setActiveIndex(index);
+                    setCurrentDay(days[index].day);
+                  }}
+                  defaultIndex={days.length > 0 ? Math.max(0, Math.min(currentDay - 1, days.length - 1)) : 0}
+                  loop={false}
+                  enabled={true}
+                  style={styles.carousel}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.navButton, styles.navButtonRight]}
+                onPress={handleNext}
+                disabled={activeIndex >= days.length - 1}
+              >
+                <ChevronRightIcon width={24} height={24} />
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={[styles.navButton, styles.navButtonRight]}
-              onPress={handleNext}
-              disabled={activeIndex >= days.length - 1}
-            >
-              <ChevronRightIcon width={24} height={24} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.tasksSection}>
-            <Text style={styles.tasksTitle}>Tasks for today</Text>
-            
-            <ScrollView 
-              style={styles.tasksList}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.tasksListContent}
-            >
-              {currentDayData?.tasks.map((task, index) => (
-                <Pressable
-                  key={task.id}
-                  style={styles.taskItemWrapper}
-                  onPress={() => handleTaskToggle(task.id)}
-                >
-                  {task.completed ? (
-                    <ImageBackground
-                      source={require('../../assets/card-bg.png')}
-                      style={[styles.taskItem, styles.taskItemCompleted]}
-                      imageStyle={styles.taskItemImageStyle}
-                    >
-                      <View style={styles.taskLeft}>
-                        <View style={styles.soundWaveContainer}>
-                          <SoundWaveIcon width={32} height={32} />
-                        </View>
-                        <View style={styles.taskTextContainer}>
-                          <Text style={styles.taskTitle}>{task.title}</Text>
-                        </View>
-                      </View>
-
-                      <View
-                        style={[
-                          styles.checkbox,
-                          styles.checkboxCompleted,
-                        ]}
+            <View style={styles.tasksSection}>
+              <Text style={styles.tasksTitle}>Tasks for today</Text>
+              
+              <View style={styles.tasksList}>
+                {currentDayData?.tasks.map((task, index) => (
+                  <Pressable
+                    key={task.id}
+                    style={styles.taskItemWrapper}
+                    onPress={() => handleTaskToggle(task.id)}
+                  >
+                    {task.completed ? (
+                      <ImageBackground
+                        source={require('../../assets/card-bg.png')}
+                        style={[styles.taskItem, styles.taskItemCompleted]}
+                        imageStyle={styles.taskItemImageStyle}
                       >
-                        <CheckmarkIcon width={20} height={20} color="#FFFFFF" />
-                      </View>
-                    </ImageBackground>
-                  ) : (
-                    <View style={styles.taskItem}>
-                      <View style={styles.taskLeft}>
-                        <View style={styles.soundWaveContainer}>
-                          <SoundWaveIcon width={32} height={32} />
+                        <View style={styles.taskLeft}>
+                          <View style={styles.soundWaveContainer}>
+                            <SoundWaveIcon width={32} height={32} />
+                          </View>
+                          <View style={styles.taskTextContainer}>
+                            <Text style={styles.taskTitle}>{task.title}</Text>
+                          </View>
                         </View>
-                        <View style={styles.taskTextContainer}>
-                          <Text style={styles.taskTitle}>{task.title}</Text>
-                        </View>
-                      </View>
 
-                      <View style={styles.checkbox}>
-                        {/* Empty checkbox */}
+                        <View
+                          style={[
+                            styles.checkbox,
+                            styles.checkboxCompleted,
+                          ]}
+                        >
+                          <CheckmarkIcon width={20} height={20} color="#FFFFFF" />
+                        </View>
+                      </ImageBackground>
+                    ) : (
+                      <View style={styles.taskItem}>
+                        <View style={styles.taskLeft}>
+                          <View style={styles.soundWaveContainer}>
+                            <SoundWaveIcon width={32} height={32} />
+                          </View>
+                          <View style={styles.taskTextContainer}>
+                            <Text style={styles.taskTitle}>{task.title}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.checkbox}>
+                          {/* Empty checkbox */}
+                        </View>
                       </View>
-                    </View>
-                  )}
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </>
-      )}
-    </ImageBackground>
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </>
+        )}
+        </ScrollView>
+      </Animated.View>
+    </View>
   );
 };
 
@@ -298,13 +347,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0A0A0F',
   },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backgroundImage: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 100,
+  },
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
+    zIndex: 10,
+    backgroundColor: 'transparent',
+  },
+  headerSpacer: {
+    height: 120, // paddingTop (60) + paddingBottom (20) + content height (~40)
   },
   menuButton: {
     width: 40,
@@ -365,9 +442,16 @@ const styles = StyleSheet.create({
     height: 260,
     borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    position: 'relative',
+  },
+  cardOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 1,
+  },
+  cardContentWrapper: {
+    flex: 1,
+    zIndex: 2,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -397,9 +481,8 @@ const styles = StyleSheet.create({
   },
   dayNumber: {
     fontFamily: 'Cinzel_900Black',
-    fontSize: 96,
+    fontSize: 76,
     color: '#fff',
-    lineHeight: 105,
     marginBottom: 12,
   },
   completionText: {
@@ -431,8 +514,8 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   tasksSection: {
-    flex: 1,
     paddingHorizontal: 20,
+    marginBottom: 20,
   },
   tasksTitle: {
     fontFamily: 'Roboto_700Bold',
@@ -441,10 +524,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tasksList: {
-    flex: 1,
-  },
-  tasksListContent: {
-    paddingBottom: 100,
+    // Removed flex: 1 since it's now inside ScrollView
   },
   taskItemWrapper: {
     marginBottom: 12,
@@ -490,11 +570,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 4,
   },
-  taskSubtitle: {
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
   checkbox: {
     width: 28,
     height: 28,
@@ -510,10 +585,10 @@ const styles = StyleSheet.create({
     borderColor: '#8B5CF6',
   },
   loadingContainer: {
-    flex: 1,
+    minHeight: SCREEN_HEIGHT * 0.6,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 100,
+    paddingVertical: 100,
   },
   loadingText: {
     fontFamily: 'Roboto_400Regular',
@@ -522,11 +597,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   errorContainer: {
-    flex: 1,
+    minHeight: SCREEN_HEIGHT * 0.6,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
-    paddingBottom: 100,
+    paddingVertical: 100,
   },
   errorText: {
     fontFamily: 'Roboto_400Regular',
