@@ -16,14 +16,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nevermore.app",
-      "buildNumber": "2"
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/bell.png",
         "backgroundColor": "#2D1B69"
       },
-      "package": "com.nevermoreapp"
+      "package": "com.nevermore.app"
     },
     "web": {
       "favicon": "./src/assets/bell.png"
