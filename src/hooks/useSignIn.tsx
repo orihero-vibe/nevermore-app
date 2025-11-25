@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 
 interface SignInData {
@@ -72,14 +71,17 @@ export const useSignIn = () => {
       data: SignInData,
       callbacks: {
         onSuccess: () => void;
-        onError?: (error: Error) => void;
+        onError?: (error: Error & { message: string }) => void;
       }
     ): Promise<void> => {
       const { email, password } = data;
 
       const validation = validateSignInForm(data);
       if (!validation.isValid) {
-        Alert.alert('Validation Error', validation.error || 'Please check your input.');
+        const validationError = new Error(validation.error || 'Please check your input.') as Error & { message: string };
+        if (callbacks.onError) {
+          callbacks.onError(validationError);
+        }
         return;
       }
 
@@ -90,10 +92,11 @@ export const useSignIn = () => {
         callbacks.onSuccess();
       } catch (err: any) {
         const errorMessage = parseSignInError(err);
-        Alert.alert('Sign In Failed', errorMessage, [{ text: 'OK' }]);
+        const errorWithMessage = new Error(errorMessage) as Error & { message: string };
+        errorWithMessage.message = errorMessage;
 
         if (callbacks.onError) {
-          callbacks.onError(err);
+          callbacks.onError(errorWithMessage);
         }
       }
     },
@@ -105,39 +108,35 @@ export const useSignIn = () => {
       email: string,
       callbacks: {
         onSuccess: () => void;
-        onError?: (error: Error) => void;
+        onError?: (error: Error & { message: string }) => void;
       }
     ): Promise<void> => {
       if (!email.trim()) {
-        Alert.alert('Email Required', 'Please enter your email address.');
+        const emailError = new Error('Please enter your email address.') as Error & { message: string };
+        if (callbacks.onError) {
+          callbacks.onError(emailError);
+        }
         return;
       }
 
       if (!validateEmail(email)) {
-        Alert.alert('Invalid Email', 'Please enter a valid email address.');
+        const validationError = new Error('Please enter a valid email address.') as Error & { message: string };
+        if (callbacks.onError) {
+          callbacks.onError(validationError);
+        }
         return;
       }
 
       try {
         await sendPasswordRecovery(email);
-
-        Alert.alert(
-          'Email Sent',
-          'We have sent a password reset link to your email address.',
-          [
-            {
-              text: 'OK',
-              onPress: callbacks.onSuccess,
-            },
-          ]
-        );
+        callbacks.onSuccess();
       } catch (error: any) {
         const errorMessage = error?.message || 'Failed to send recovery email. Please try again.';
-
-        Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
+        const errorWithMessage = new Error(errorMessage) as Error & { message: string };
+        errorWithMessage.message = errorMessage;
 
         if (callbacks.onError) {
-          callbacks.onError(error);
+          callbacks.onError(errorWithMessage);
         }
       }
     },

@@ -26,8 +26,10 @@ export function SignIn() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   
   const handleSignIn = async () => {
+    setErrorMessage(''); // Clear previous errors
     await signInUser(
       {
         email,
@@ -38,6 +40,7 @@ export function SignIn() {
         onSuccess: navigateToHome,
         onError: (error) => {
           console.error('Sign in failed:', error);
+          setErrorMessage(error.message || 'Invalid email or password. Please try again.');
         },
       }
     );
@@ -117,6 +120,12 @@ export function SignIn() {
                   <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
               </View>
+
+              {errorMessage !== '' && (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{errorMessage}</Text>
+                </View>
+              )}
 
               <Button
                 title={isLoading ? "Signing In..." : "Sign In"}
@@ -216,6 +225,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#8b5cf6',
     fontFamily: 'Roboto_500Medium',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ef4444',
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
   },
   signInButton: {
     marginBottom: 24,

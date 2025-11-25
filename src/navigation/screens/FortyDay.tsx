@@ -10,7 +10,7 @@ import {
   Pressable,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import Carousel from 'react-native-reanimated-carousel';
@@ -34,7 +34,7 @@ import SoundWaveIcon from '../../assets/icons/sound-wave';
 import CheckmarkIcon from '../../assets/icons/checkmark';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH * 0.7;
+const CARD_WIDTH = SCREEN_WIDTH * 0.68;
 
 export const FortyDay = () => {
   const navigation = useNavigation();
@@ -67,18 +67,30 @@ export const FortyDay = () => {
     loadFortyDayContent();
   }, []);
 
-  // Animation effect - start animations immediately
-  useEffect(() => {
-    // Always animate header immediately on mount
-    headerOpacity.value = withTiming(1, { duration: 600 });
-    headerTranslateY.value = withTiming(0, { duration: 600 });
-    
-    // Animate content when data is ready
-    if (days.length > 0) {
-      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
-    }
-  }, [days.length]);
+  // Reset and animate on screen focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Reset animation values
+      headerOpacity.value = 0;
+      headerTranslateY.value = -30;
+      canvasOpacity.value = 0;
+      canvasTranslateY.value = 50;
+      
+      // Start animations
+      headerOpacity.value = withTiming(1, { duration: 600 });
+      headerTranslateY.value = withTiming(0, { duration: 600 });
+      
+      // Animate content when data is ready
+      if (days.length > 0) {
+        canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+        canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+      }
+
+      return () => {
+        // Cleanup if needed
+      };
+    }, [days.length])
+  );
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
     return {
@@ -432,10 +444,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   navButtonLeft: {
-    marginRight: 15,
+    marginRight: 8,
   },
   navButtonRight: {
-    marginLeft: 15,
+    marginLeft: 8,
   },
   card: {
     width: CARD_WIDTH,

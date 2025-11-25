@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Alert, Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { DrawerActions } from '@react-navigation/native';
 import {
@@ -80,30 +80,42 @@ export function Bookmark() {
     }
   }, [filteredBookmarks]);
 
-  // Animate header and canvas once on mount
-  useEffect(() => {
-    headerOpacity.value = withTiming(1, { duration: 600 });
-    headerTranslateY.value = withTiming(0, { duration: 600 });
-    
-    canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-    canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
-  }, []);
+  // Reset and animate on screen focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Reset animation values
+      headerOpacity.value = 0;
+      headerTranslateY.value = -30;
+      canvasOpacity.value = 0;
+      canvasTranslateY.value = 50;
+      
+      const currentBookmarks = getFilteredBookmarks(activeTab);
+      if (currentBookmarks.length > 0) {
+        bookmarkOpacities.value = currentBookmarks.map(() => 0);
+        bookmarkScales.value = currentBookmarks.map(() => 0);
+      }
 
-  // Animate bookmarks when filteredBookmarks changes
-  useEffect(() => {
-    if (filteredBookmarks.length === 0) return;
+      // Start animations
+      headerOpacity.value = withTiming(1, { duration: 600 });
+      headerTranslateY.value = withTiming(0, { duration: 600 });
+      
+      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
 
-    const animateBookmarks = () => {
-      filteredBookmarks.forEach((_, index) => {
-        const delay = 400 + (index * 150);
-        bookmarkOpacities.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
-        bookmarkScales.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
-      });
-    };
+      // Animate bookmarks
+      if (currentBookmarks.length > 0) {
+        currentBookmarks.forEach((_, index) => {
+          const delay = 400 + (index * 150);
+          bookmarkOpacities.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
+          bookmarkScales.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
+        });
+      }
 
-    const timer = setTimeout(animateBookmarks, 300);
-    return () => clearTimeout(timer);
-  }, [filteredBookmarks]);
+      return () => {
+        // Cleanup if needed
+      };
+    }, [])
+  );
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
     return {

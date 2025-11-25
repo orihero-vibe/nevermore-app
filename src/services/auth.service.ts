@@ -129,7 +129,7 @@ export const createPasswordRecovery = async (
     const recoveryUrl = url || 'https://cloud.appwrite.io/v1/account/recovery/confirm';
     await account.createRecovery(email, recoveryUrl);
   } catch (error: unknown) {
-    showAppwriteError(error, { skipUnauthorized: true });
+    // Error will be handled by the UI layer
     throw error;
   }
 };

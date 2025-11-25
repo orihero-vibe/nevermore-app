@@ -1,6 +1,6 @@
 import { Cinzel_400Regular } from "@expo-google-fonts/cinzel";
 import { Roboto_400Regular } from "@expo-google-fonts/roboto";
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
@@ -127,10 +127,23 @@ export default function Home() {
     }
   }, [categories]);
 
-  useEffect(() => {
-    if (categories.length === 0 || loading) return;
+  // Reset and animate on screen focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (categories.length === 0 || loading) return;
 
-    const animateComponents = () => {
+      // Reset animation values
+      headerOpacity.value = 0;
+      headerTranslateY.value = -30;
+      canvasOpacity.value = 0;
+      canvasTranslateY.value = 50;
+      
+      if (categories.length > 0) {
+        categoryOpacities.value = categories.map(() => 0);
+        categoryScales.value = categories.map(() => 0);
+      }
+
+      // Start animations
       headerOpacity.value = withTiming(1, { duration: 600 });
       headerTranslateY.value = withTiming(0, { duration: 600 });
       canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
@@ -141,11 +154,12 @@ export default function Home() {
         categoryOpacities.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
         categoryScales.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
       });
-    };
 
-    const timer = setTimeout(animateComponents, 300);
-    return () => clearTimeout(timer);
-  }, [categories, loading]);
+      return () => {
+        // Cleanup if needed
+      };
+    }, [categories, loading])
+  );
 
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/main-bg.png'));
