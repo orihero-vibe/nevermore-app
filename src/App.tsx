@@ -52,12 +52,11 @@ export function App() {
     Asset.loadAsync([
       ...NavigationAssets,
       require('./assets/newspaper.png'),
-      require('./assets/bell.png'),
+      require('./assets/App_Icon.png'),
       require('./assets/splash-bg.png'),
     ]).then(() => {
       setAssetsLoaded(true);
-    }).catch((error) => {
-      console.error('Asset loading error:', error);
+    }).catch(() => {
     });
   }, []);
 

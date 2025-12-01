@@ -18,6 +18,8 @@ interface AuthState {
   checkAuth: () => Promise<void>;
   clearError: () => void;
   sendPasswordRecovery: (email: string) => Promise<void>;
+  sendMagicURLLogin: (email: string) => Promise<void>;
+  createMagicURLSession: (userId: string, secret: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -62,17 +64,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authService.signOut();
       
-      // User data (bookmarks, forty-day progress) is preserved in AsyncStorage
-      // No need to clear stores on sign out
-      
       set({ user: null, isAuthenticated: false, isLoading: false });
     } catch (error: any) {
       set({ 
         error: error.message || 'Failed to sign out', 
         isLoading: false 
       });
-      // Even if there's an error, clear the local state
-      // This ensures the user is logged out locally even if server call fails
       set({ user: null, isAuthenticated: false });
     }
   },
@@ -82,11 +79,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authService.deleteAccount();
       
-      // Clear all local data stores
       useBookmarkStore.getState().clearBookmarks();
       useFortyDayStore.getState().clearProgress();
       
-      // Clear all local state after deleting account
       set({ user: null, isAuthenticated: false, isLoading: false });
     } catch (error: any) {
       set({ 
@@ -124,6 +119,36 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ 
         error: error.message || 'Failed to send recovery email', 
         isLoading: false 
+      });
+      throw error;
+    }
+  },
+
+  sendMagicURLLogin: async (email: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await authService.createMagicURLToken(email);
+      set({ isLoading: false });
+    } catch (error: any) {
+      set({ 
+        error: error.message || 'Failed to send magic URL email', 
+        isLoading: false 
+      });
+      throw error;
+    }
+  },
+
+  createMagicURLSession: async (userId: string, secret: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await authService.createMagicURLSession(userId, secret);
+      const user = await authService.getCurrentUser();
+      set({ user, isAuthenticated: true, isLoading: false });
+    } catch (error: any) {
+      set({ 
+        error: error.message || 'Failed to create session', 
+        isLoading: false,
+        isAuthenticated: false 
       });
       throw error;
     }

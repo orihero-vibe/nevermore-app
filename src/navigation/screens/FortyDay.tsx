@@ -20,6 +20,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFortyDayStore } from '../../store/fortyDayStore';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import MenuIcon from '../../assets/icons/menu';
@@ -38,6 +39,7 @@ const CARD_WIDTH = SCREEN_WIDTH * 0.68;
 
 export const FortyDay = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   
   const { 
     currentDay, 
@@ -57,7 +59,6 @@ export const FortyDay = () => {
   
   const audioPlayer = useAudioPlayer();
   
-  // Animation values matching Home screen pattern
   const canvasTranslateY = useSharedValue(50);
   const canvasOpacity = useSharedValue(0);
   const headerOpacity = useSharedValue(0);
@@ -67,28 +68,21 @@ export const FortyDay = () => {
     loadFortyDayContent();
   }, []);
 
-  // Reset and animate on screen focus
   useFocusEffect(
     React.useCallback(() => {
-      // Reset animation values
       headerOpacity.value = 0;
       headerTranslateY.value = -30;
       canvasOpacity.value = 0;
       canvasTranslateY.value = 50;
       
-      // Start animations
       headerOpacity.value = withTiming(1, { duration: 600 });
       headerTranslateY.value = withTiming(0, { duration: 600 });
       
-      // Animate content when data is ready
       if (days.length > 0) {
         canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
         canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
       }
 
-      return () => {
-        // Cleanup if needed
-      };
     }, [days.length])
   );
 
@@ -207,7 +201,7 @@ export const FortyDay = () => {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
+      <Animated.View style={[styles.header, { paddingTop: insets.top + 10 }, headerAnimatedStyle]}>
         <TouchableOpacity 
           style={styles.menuButton}
           onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
@@ -229,10 +223,10 @@ export const FortyDay = () => {
       <Animated.View style={[styles.scrollContainer, canvasAnimatedStyle]}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollViewContent}
+          contentContainerStyle={[styles.scrollViewContent, { paddingBottom: 100 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
         >
-        <View style={styles.headerSpacer} />
+        <View style={[styles.headerSpacer, { height: insets.top + 100 }]} />
         <Text style={styles.mainTitle}>40 DAY JOURNEY</Text>
 
         {loading && (
@@ -337,9 +331,7 @@ export const FortyDay = () => {
                           </View>
                         </View>
 
-                        <View style={styles.checkbox}>
-                          {/* Empty checkbox */}
-                        </View>
+                        <View style={styles.checkbox} />
                       </View>
                     )}
                   </Pressable>
@@ -387,13 +379,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
     paddingBottom: 20,
-    zIndex: 10,
+    zIndex: 1000,
+    elevation: 1000,
     backgroundColor: 'transparent',
   },
   headerSpacer: {
-    height: 120, // paddingTop (60) + paddingBottom (20) + content height (~40)
+    height: 100,
   },
   menuButton: {
     width: 40,
@@ -536,7 +528,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tasksList: {
-    // Removed flex: 1 since it's now inside ScrollView
   },
   taskItemWrapper: {
     marginBottom: 12,

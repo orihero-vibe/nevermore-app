@@ -7,11 +7,24 @@ export type RootStackParamList = {
   [ScreenNames.SIGN_IN]: undefined;
   [ScreenNames.SIGN_UP]: undefined;
   [ScreenNames.FORGOT_PASSWORD]: undefined;
-  [ScreenNames.CREATE_NEW_PASSWORD]: undefined;
+  [ScreenNames.CREATE_NEW_PASSWORD]: {
+    userId?: string;
+    secret?: string;
+  };
+  [ScreenNames.MAGIC_URL_VERIFY]: {
+    userId?: string;
+    secret?: string;
+  };
   [ScreenNames.PERMISSION]: undefined;
   [ScreenNames.PURPOSE]: undefined;
   [ScreenNames.NICKNAME]: undefined;
-  [ScreenNames.INVITE]: undefined;
+  [ScreenNames.INVITE]: {
+    token?: string;
+    userId?: string;
+    secret?: string;
+    expire?: string;
+    project?: string;
+  } | undefined;
   [ScreenNames.INVITE_SEND]: undefined;
   [ScreenNames.SUBSCRIPTION]: undefined;
   [ScreenNames.HOME_TABS]: undefined;

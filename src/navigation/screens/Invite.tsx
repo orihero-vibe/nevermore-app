@@ -1,5 +1,6 @@
-import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useState, useEffect } from 'react';
 import {
     Dimensions,
     StatusBar,
@@ -7,6 +8,9 @@ import {
     Text,
     TouchableOpacity,
     View,
+    Alert,
+    Linking,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -22,24 +26,167 @@ import VolumeIcon from '../../assets/icons/volume';
 import { Button } from '../../components/Button';
 import { SecondaryButton } from '../../components/SecondaryButton';
 import { ScreenNames } from '../../constants/ScreenNames';
+import { invitationService } from '../../services/invitation.service';
+import { account } from '../../services/appwrite.config';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { showAppwriteError, showSuccessNotification } from '../../services/notifications';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
+
+type RootStackParamList = {
+  [ScreenNames.INVITE]: {
+    token?: string;
+    userId?: string;
+    secret?: string;
+    expire?: string;
+    project?: string;
+  } | undefined;
+  [ScreenNames.INVITE_SEND]: undefined;
+  [ScreenNames.HOME_TABS]: undefined;
+  [ScreenNames.SIGN_UP]: undefined;
+};
+
+type InviteRouteProp = RouteProp<RootStackParamList, ScreenNames.INVITE>;
+type InviteNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function Invite() {
-    const navigation = useNavigation();
+    const navigation = useNavigation<InviteNavigationProp>();
+    const route = useRoute<InviteRouteProp>();
+    const { navigateToInviteSend, navigateToHomeTabs, navigateToSignUp } = useAppNavigation();
+    
+    const [isLoading, setIsLoading] = useState(false);
+    const [isProcessingInvitation, setIsProcessingInvitation] = useState(false);
+    
     const width = Dimensions.get('window').width;
     const height = Dimensions.get('window').height;
     const bg = useImage(require('../../assets/gradient.png'));
 
+    const token = route.params?.token;
+    const userId = route.params?.userId;
+    const secret = route.params?.secret;
+    const isFromDeepLink = !!(token || userId || secret);
+
+    useEffect(() => {
+        if (isFromDeepLink && token) {
+            handleInvitationAcceptance();
+        }
+    }, [isFromDeepLink, token]);
+
+    const handleInvitationAcceptance = async () => {
+        if (!token) {
+            Alert.alert('Error', 'Invalid invitation link. Missing invitation token.');
+            return;
+        }
+
+        setIsProcessingInvitation(true);
+
+        try {
+            const invitation = await invitationService.getInvitationByToken(token);
+            
+            if (!invitation) {
+                Alert.alert(
+                    'Invalid Invitation',
+                    'This invitation link is invalid or has expired. Please request a new invitation.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigateToHomeTabs(),
+                        },
+                    ]
+                );
+                return;
+            }
+
+            if (invitation.status !== 'pending') {
+                Alert.alert(
+                    'Invitation Already Used',
+                    `This invitation has already been ${invitation.status}.`,
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigateToHomeTabs(),
+                        },
+                    ]
+                );
+                return;
+            }
+
+            if (userId && secret) {
+                try {
+                    await account.createSession({
+                        userId,
+                        secret,
+                    });
+                    await invitationService.acceptInvitation(token);
+                    
+                    showSuccessNotification(
+                        'Invitation accepted! Welcome to Nevermore.',
+                        'Success'
+                    );
+                    
+                    navigateToHomeTabs();
+                } catch (sessionError: any) {
+                    try {
+                        await invitationService.acceptInvitation(token);
+                    } catch (acceptError) {
+                    }
+                    
+                    Alert.alert(
+                        'Welcome!',
+                        'Please create an account to continue.',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => navigateToSignUp(),
+                            },
+                        ]
+                    );
+                }
+            } else {
+                Alert.alert(
+                    'Welcome!',
+                    'Please create an account to continue.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigateToSignUp(),
+                        },
+                    ]
+                );
+            }
+        } catch (error: unknown) {
+            showAppwriteError(error, {
+                title: 'Failed to Process Invitation',
+                skipUnauthorized: true,
+            });
+        } finally {
+            setIsProcessingInvitation(false);
+        }
+    };
+
     const handleNext = () => {
-        // TODO: Handle invite logic
-        console.log('Next - Invite friend');
-        navigation.navigate(ScreenNames.INVITE_SEND);
+        navigateToInviteSend();
     };
 
     const handleSkip = () => {
-        // TODO: Handle skip logic
-        console.log('Skip invite');
-        navigation.navigate(ScreenNames.HOME_TABS);
+        navigateToHomeTabs();
     };
+
+    if (isProcessingInvitation) {
+        return (
+            <View style={styles.container}>
+                <StatusBar barStyle="light-content" backgroundColor="#000000" />
+                <Canvas style={styles.canvas}>
+                    <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
+                </Canvas>
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.loadingContainer}>
+                        <LoadingSpinner />
+                        <Text style={styles.loadingText}>Processing invitation...</Text>
+                    </View>
+                </SafeAreaView>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -48,7 +195,6 @@ export function Invite() {
                 <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
             </Canvas>
             <SafeAreaView style={styles.safeArea}>
-                    {/* Header */}
                     <View style={styles.header}>
                         <TouchableOpacity onPress={() => navigation.goBack()}>
                             <ArrowLeftIcon />
@@ -57,7 +203,6 @@ export function Invite() {
                         <View style={styles.headerSpacer} />
                     </View>
 
-                    {/* Main Content */}
                     <View style={styles.content}>
                         <Text style={styles.title}>INVITE A FRIEND</Text>
 
@@ -65,7 +210,6 @@ export function Invite() {
                             Whether you're here for yourself or supporting someone else, you're in the right place.
                         </Text>
 
-                        {/* How It Works Section */}
                         <View style={styles.howItWorksSection}>
                             <Text style={styles.sectionTitle}>HOW IT WORKS</Text>
 
@@ -85,7 +229,6 @@ export function Invite() {
                             </View>
                         </View>
 
-                        {/* Quote Section */}
                         <View style={styles.quoteSection}>
                             <QuoteIcon />
                             <Text style={styles.quoteText}>
@@ -96,7 +239,6 @@ export function Invite() {
                         </View>
                     </View>
 
-                    {/* Buttons */}
                     <View style={styles.buttonContainer}>
                         <Button
                             title="Next"
@@ -228,5 +370,16 @@ const styles = StyleSheet.create({
     },
     skipButton: {
         alignItems: 'center',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#ffffff',
+        fontFamily: 'Roboto_400Regular',
     },
 });

@@ -29,7 +29,7 @@ export function SignIn() {
   const [errorMessage, setErrorMessage] = useState('');
   
   const handleSignIn = async () => {
-    setErrorMessage(''); // Clear previous errors
+    setErrorMessage('');
     await signInUser(
       {
         email,
@@ -39,7 +39,6 @@ export function SignIn() {
       {
         onSuccess: navigateToHome,
         onError: (error) => {
-          console.error('Sign in failed:', error);
           setErrorMessage(error.message || 'Invalid email or password. Please try again.');
         },
       }

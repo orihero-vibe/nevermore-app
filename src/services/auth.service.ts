@@ -4,6 +4,7 @@ import type { User } from "../types";
 import { showAppwriteError } from "./notifications";
 import { isUnauthorizedError } from "./errorHandler";
 import { userProfileService } from "./userProfile.service";
+import { invitationService } from "./invitation.service";
 
 export interface SignUpParams {
   email: string;
@@ -42,12 +43,11 @@ export const signUp = async ({
         type: type || 'patient',
       });
     } catch (profileError: any) {
-      console.error('Failed to create user profile:', profileError);
+      // Profile creation failed, but account is created
     }
 
     return newAccount;
   } catch (error: unknown) {
-    console.error('Sign up error:', error);
     showAppwriteError(error, { skipUnauthorized: true });
     throw error;
   }
@@ -58,18 +58,24 @@ export const signIn = async (
   password: string
 ): Promise<Models.Session> => {
   try {
-    // Check if there's an existing session and delete it before creating a new one
     const existingSession = await getCurrentSession();
     if (existingSession) {
       try {
         await account.deleteSession('current');
       } catch (deleteError) {
-        // Ignore errors when deleting session (might already be invalid)
-        console.log('Could not delete existing session:', deleteError);
+        // Ignore delete errors
       }
     }
 
     const session = await account.createEmailPasswordSession(email, password);
+    
+    // Update invitation status to accepted if user has a pending invitation
+    try {
+      await invitationService.acceptInvitationByEmail(email);
+    } catch (invitationError) {
+      // Silently fail - invitation acceptance shouldn't block sign-in
+    }
+    
     return session;
   } catch (error: unknown) {
     const isInvalidCredentials = isUnauthorizedError(error);
@@ -89,7 +95,6 @@ export const getCurrentSession = async (): Promise<Models.Session | null> => {
       return null;
     }
     showAppwriteError(error, { skipUnauthorized: true });
-    console.error("Error getting current session:", error);
     return null;
   }
 };
@@ -103,7 +108,6 @@ export const getCurrentUser = async (): Promise<Models.User<Models.Preferences> 
       return null;
     }
     showAppwriteError(error, { skipUnauthorized: true });
-    console.error("Error getting current user:", error);
     return null;
   }
 };
@@ -115,7 +119,6 @@ export const signOut = async (): Promise<void> => {
     if (isUnauthorizedError(error)) {
       return;
     }
-    console.error("Error signing out:", error);
   }
 };
 
@@ -124,12 +127,15 @@ export const createPasswordRecovery = async (
   url?: string
 ): Promise<void> => {
   try {
-    // Using a universal HTTPS URL for development
-    // For production, replace with your actual app domain or registered deep link
-    const recoveryUrl = url || 'https://cloud.appwrite.io/v1/account/recovery/confirm';
-    await account.createRecovery(email, recoveryUrl);
+    // Use nevermoreapp.com for deep linking - opens app if installed, falls back to website homepage if not
+    // The app will intercept /reset-password path via Universal Links/App Links
+    // Website will open at root (/) when app is not installed
+    const recoveryUrl = url || "https://nevermoreapp.com/reset-password";
+    await account.createRecovery({
+      email,
+      url: recoveryUrl,
+    });
   } catch (error: unknown) {
-    // Error will be handled by the UI layer
     throw error;
   }
 };
@@ -156,38 +162,108 @@ export const isAuthenticated = async (): Promise<boolean> => {
   }
 };
 
+export const createMagicURLToken = async (
+  email: string,
+  url?: string
+): Promise<void> => {
+  try {
+    const magicUrl = url || "https://nevermoreapp.com/verify-magic-url";
+    await account.createMagicURLToken({
+      userId: ID.unique(),
+      email,
+      url: magicUrl,
+    });
+  } catch (error: unknown) {
+    showAppwriteError(error, { skipUnauthorized: true });
+    throw error;
+  }
+};
+
+export const createMagicURLSession = async (
+  userId: string,
+  secret: string
+): Promise<Models.Session> => {
+  try {
+    const existingSession = await getCurrentSession();
+    if (existingSession) {
+      try {
+        await account.deleteSession('current');
+      } catch (deleteError) {
+        // Ignore delete errors
+      }
+    }
+
+    const session = await account.createSession({
+      userId,
+      secret,
+    });
+    
+    // Get user after session creation
+    const user = await getCurrentUser();
+    
+    if (user) {
+      // Check if user profile exists, if not create one
+      try {
+        const existingProfile = await userProfileService.getUserProfileByAuthId(user.$id);
+        if (!existingProfile) {
+          // Create user profile with default values
+          await userProfileService.createUserProfile({
+            auth_id: user.$id,
+            full_name: user.name || user.email?.split('@')[0] || '',
+            nickname: '',
+            type: 'patient',
+          });
+        }
+      } catch (profileError: any) {
+        // Profile creation/check failed, but session is created - don't block login
+        console.error('User profile check/create error:', profileError);
+      }
+      
+      // Update invitation status to accepted if user has a pending invitation
+      try {
+        if (user.email) {
+          await invitationService.acceptInvitationByEmail(user.email);
+        }
+      } catch (invitationError) {
+        // Silently fail - invitation acceptance shouldn't block sign-in
+      }
+    }
+    
+    return session;
+  } catch (error: unknown) {
+    const isInvalidCredentials = isUnauthorizedError(error);
+    if (!isInvalidCredentials) {
+      showAppwriteError(error, { skipUnauthorized: true });
+    }
+    throw error;
+  }
+};
+
 export const deleteAccount = async (): Promise<void> => {
   try {
-    // First, get the current user to get their auth_id
     const currentUser = await getCurrentUser();
     
     if (!currentUser) {
       throw new Error('No authenticated user found');
     }
 
-    // Delete user profile from database first
     try {
       const userProfile = await userProfileService.getUserProfileByAuthId(currentUser.$id);
       if (userProfile && userProfile.$id) {
         await userProfileService.deleteUserProfile(userProfile.$id);
       }
     } catch (profileError) {
-      console.error('Error deleting user profile:', profileError);
-      // Continue with auth deletion even if profile deletion fails
+      // Ignore profile deletion errors
     }
 
-    // Block the account permanently (Appwrite doesn't provide client-side account deletion for security)
-    // The account will be blocked and unable to login again
     try {
       await account.updateStatus();
     } catch (statusError) {
-      console.error('Error blocking account:', statusError);
+      // Ignore status update errors
     }
 
-    // Delete current session (log out)
     await signOut();
   } catch (error: unknown) {
-    console.error('Error deleting account:', error);
     showAppwriteError(error, { skipUnauthorized: true });
     throw error;
   }
