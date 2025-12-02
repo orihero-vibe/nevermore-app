@@ -1,7 +1,7 @@
 import { useAudioPlayer as useExpoAudioPlayer, AudioSource } from 'expo-audio';
 import { useEffect, useRef, useState } from 'react';
 
-interface UseAudioPlayerReturn {
+interface UseFortyDayAudioPlayerReturn {
   isPlaying: boolean;
   isLoading: boolean;
   currentTime: string;
@@ -22,7 +22,11 @@ interface UseAudioPlayerReturn {
   unloadAudio: () => Promise<void>;
 }
 
-export function useAudioPlayer(): UseAudioPlayerReturn {
+/**
+ * Dedicated audio player hook for the FortyDay screen
+ * This creates a separate audio player instance to avoid conflicts with other screens
+ */
+export function useFortyDayAudioPlayer(): UseFortyDayAudioPlayerReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -121,7 +125,7 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
 
       setCurrentUri(uri);
     } catch (error) {
-      console.error('Error loading audio:', error);
+      console.error('Error loading audio in FortyDay screen:', error);
       setCurrentUri(null);
       setIsPlaying(false);
       setCurrentTime('00:00');
@@ -317,3 +321,4 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     unloadAudio,
   };
 }
+

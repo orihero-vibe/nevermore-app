@@ -10,13 +10,16 @@ import {
   useImage,
 } from "@shopify/react-native-skia";
 import React, { useEffect, useState } from "react";
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
+  useAnimatedScrollHandler,
   useSharedValue,
   withDelay,
-  withTiming
+  withTiming,
+  interpolate,
+  Extrapolate,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MenuIcon from '../../assets/icons/menu';
@@ -56,6 +59,7 @@ export default function Home() {
   const canvasOpacity = useSharedValue(0);
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-30);
+  const scrollY = useSharedValue(0);
   const categoryScales = useSharedValue<number[]>([]);
   const categoryOpacities = useSharedValue<number[]>([]);
 
@@ -165,10 +169,24 @@ export default function Home() {
   const bg = useImage(require('../../assets/main-bg.png'));
   const insets = useSafeAreaInsets();
 
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
   const headerAnimatedStyle = useAnimatedStyle(() => {
+    const backgroundColorOpacity = interpolate(
+      scrollY.value,
+      [0, 150],
+      [0, 0.4],
+      Extrapolate.CLAMP
+    );
+
     return {
       opacity: headerOpacity.value,
       transform: [{ translateY: headerTranslateY.value }],
+      backgroundColor: `rgba(0, 0, 0, ${backgroundColorOpacity})`,
     };
   });
 
@@ -202,11 +220,13 @@ export default function Home() {
         style={[styles.scrollContainer, canvasAnimatedStyle]}
         pointerEvents={bottomSheetVisible ? 'none' : 'auto'}
       >
-        <ScrollView
+        <Animated.ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!bottomSheetVisible}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
         >
           <View style={styles.titleContainer}>
             <Text style={styles.titleText}>40 TEMPTATIONS</Text>
@@ -232,7 +252,7 @@ export default function Home() {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </Animated.ScrollView>
       </Animated.View>
 
       <View style={styles.bottomSheetWrapper}>

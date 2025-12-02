@@ -19,7 +19,13 @@ import {
   View
 } from 'react-native';
 import * as Sharing from 'expo-sharing';
-import Animated from 'react-native-reanimated';
+import Animated, {
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  interpolate,
+  Extrapolate,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import BookmarkIcon from '../../assets/icons/bookmark';
@@ -95,9 +101,30 @@ export default function TemptationDetails() {
     : initialContent;
   const loading = extractedCategoryId ? roleBasedLoading : initialLoading;
   
+  const scrollY = useSharedValue(0);
+  
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+  
   const { headerAnimatedStyle, canvasAnimatedStyle, contentAnimatedStyle } = useEntranceAnimations();
   const { selectedAudioIndex, audioPlayer, handleAudioSelect, loadPlaylist } = useAudioPlaylist();
   const { transcript, displayImage, audioFiles } = useContentPresentation(content);
+  
+  const headerBackgroundStyle = useAnimatedStyle(() => {
+    const backgroundColorOpacity = interpolate(
+      scrollY.value,
+      [0, 150],
+      [0, 0.4],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      backgroundColor: `rgba(0, 0, 0, ${backgroundColorOpacity})`,
+    };
+  });
   
   const { toggleBookmark, isBookmarked } = useBookmarkStore();
   const isCurrentlyBookmarked = content ? isBookmarked(content.$id) : false;
@@ -195,18 +222,21 @@ export default function TemptationDetails() {
         </Canvas>
       </View>
 
-      <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeftIcon />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nevermore</Text>
-        <View style={styles.headerSpacer} />
+      <Animated.View style={[styles.headerBackground, headerBackgroundStyle]}>
+        <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <ArrowLeftIcon />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Nevermore</Text>
+          <View style={styles.headerSpacer} />
+        </Animated.View>
       </Animated.View>
 
       <Animated.ScrollView
         style={[styles.content, contentAnimatedStyle]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
+        onScroll={scrollHandler}
       >
         {extractedCategoryId && (
           <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
@@ -345,18 +375,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Roboto_400Regular',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
+  headerBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   backButton: {
     padding: 8,

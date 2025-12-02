@@ -6,7 +6,6 @@ import {
   ImageBackground,
   TouchableOpacity,
   Dimensions,
-  ScrollView,
   Pressable,
   ActivityIndicator,
 } from 'react-native';
@@ -17,12 +16,15 @@ import Carousel from 'react-native-reanimated-carousel';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedScrollHandler,
   withDelay,
   withTiming,
+  interpolate,
+  Extrapolate,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFortyDayStore } from '../../store/fortyDayStore';
-import { useAudioPlayer } from '../../hooks/useAudioPlayer';
+import { useFortyDayAudioPlayer } from '../../hooks/useFortyDayAudioPlayer';
 import MenuIcon from '../../assets/icons/menu';
 import FlagIcon from '../../assets/icons/flag';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
@@ -57,12 +59,13 @@ export const FortyDay = () => {
     return Math.max(0, Math.min(currentDay - 1, days.length - 1));
   });
   
-  const audioPlayer = useAudioPlayer();
+  const audioPlayer = useFortyDayAudioPlayer();
   
   const canvasTranslateY = useSharedValue(50);
   const canvasOpacity = useSharedValue(0);
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-30);
+  const scrollY = useSharedValue(0);
 
   useEffect(() => {
     loadFortyDayContent();
@@ -86,10 +89,24 @@ export const FortyDay = () => {
     }, [days.length])
   );
 
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
   const headerAnimatedStyle = useAnimatedStyle(() => {
+    const backgroundColorOpacity = interpolate(
+      scrollY.value,
+      [0, 150],
+      [0, 0.4],
+      Extrapolate.CLAMP
+    );
+
     return {
       opacity: headerOpacity.value,
       transform: [{ translateY: headerTranslateY.value }],
+      backgroundColor: `rgba(0, 0, 0, ${backgroundColorOpacity})`,
     };
   });
 
@@ -116,7 +133,7 @@ export const FortyDay = () => {
     } else {
       audioPlayer.unloadAudio();
     }
-  }, [activeIndex]);
+  }, [activeIndex, days]);
 
   const currentDayData = days[activeIndex];
 
@@ -134,6 +151,22 @@ export const FortyDay = () => {
 
   const handleTaskToggle = (taskId: string) => {
     toggleTask(currentDayData.day, taskId);
+  };
+
+  const handlePlayPause = async (audioUrl: string) => {
+    if (audioPlayer.isLoading) {
+      return; // Don't do anything if already loading
+    }
+
+    // If playing, just pause
+    if (audioPlayer.isPlaying) {
+      await audioPlayer.pause();
+      return;
+    }
+
+    // Load audio if not loaded, then play
+    await audioPlayer.loadAudio(audioUrl);
+    await audioPlayer.play();
   };
 
   const renderCarouselItem = ({ item }: { item: typeof days[0] }) => {
@@ -164,27 +197,34 @@ export const FortyDay = () => {
             </View>
 
             <View style={styles.mediaControls}>
+              {isCurrentItem && audioPlayer.isLoading ? (
+                <View style={styles.mediaButton}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                </View>
+              ) : (
+                <TouchableOpacity 
+                  style={[
+                    styles.mediaButton,
+                    !item.audioUrl && styles.mediaButtonDisabled
+                  ]}
+                  onPress={() => isCurrentItem && item.audioUrl && handlePlayPause(item.audioUrl)}
+                  disabled={!item.audioUrl}
+                >
+                  {isCurrentItem && audioPlayer.isPlaying ? (
+                    <PauseIcon width={20} height={20} />
+                  ) : (
+                    <PlayIcon width={20} height={20} />
+                  )}
+                </TouchableOpacity>
+              )}
               <TouchableOpacity 
                 style={[
                   styles.mediaButton,
-                  !item.audioUrl && styles.mediaButtonDisabled
-                ]}
-                onPress={() => isCurrentItem && item.audioUrl && audioPlayer.togglePlayPause()}
-                disabled={!item.audioUrl}
-              >
-                {isCurrentItem && audioPlayer.isPlaying ? (
-                  <PauseIcon width={20} height={20} />
-                ) : (
-                  <PlayIcon width={20} height={20} />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[
-                  styles.mediaButton,
-                  !item.audioUrl && styles.mediaButtonDisabled
+                  !item.audioUrl && styles.mediaButtonDisabled,
+                  isCurrentItem && audioPlayer.isLoading && styles.mediaButtonDisabled
                 ]}
                 onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
-                disabled={!item.audioUrl}
+                disabled={!item.audioUrl || (isCurrentItem && audioPlayer.isLoading)}
               >
                 {isCurrentItem && audioPlayer.isMuted ? (
                   <VolumeMutedIcon width={20} height={20} />
@@ -201,15 +241,15 @@ export const FortyDay = () => {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.header, { paddingTop: insets.top + 10 }, headerAnimatedStyle]}>
+      <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
         <TouchableOpacity 
           style={styles.menuButton}
           onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
         >
-          <MenuIcon width={24} height={24} />
+          <MenuIcon />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nevermore</Text>
-        <View style={styles.menuButton} />
+        <View style={styles.headerRight} />
       </Animated.View>
 
       <Animated.View style={[styles.backgroundContainer, canvasAnimatedStyle]}>
@@ -221,10 +261,12 @@ export const FortyDay = () => {
       </Animated.View>
 
       <Animated.View style={[styles.scrollContainer, canvasAnimatedStyle]}>
-        <ScrollView
+        <Animated.ScrollView
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollViewContent, { paddingBottom: 100 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
         >
         <View style={[styles.headerSpacer, { height: insets.top + 100 }]} />
         <Text style={styles.mainTitle}>40 DAY JOURNEY</Text>
@@ -340,7 +382,7 @@ export const FortyDay = () => {
             </View>
           </>
         )}
-        </ScrollView>
+        </Animated.ScrollView>
       </Animated.View>
     </View>
   );
@@ -382,22 +424,20 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     zIndex: 1000,
     elevation: 1000,
-    backgroundColor: 'transparent',
   },
   headerSpacer: {
     height: 100,
   },
   menuButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   headerTitle: {
-    fontFamily: 'Cinzel_400Regular',
-    fontSize: 18,
     color: '#fff',
-    letterSpacing: 1,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  headerRight: {
+    width: 40,
   },
   mainTitle: {
     fontFamily: 'Cinzel_600SemiBold',
