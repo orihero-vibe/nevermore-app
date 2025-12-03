@@ -6,6 +6,7 @@ import {
   StyleSheet,
   StatusBar,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,10 +21,14 @@ import { Button } from '../../components/Button';
 import { SecondaryButton } from '../../components/SecondaryButton';
 import { Input } from '../../components/Input';
 import { ScreenNames } from '../../constants/ScreenNames';
+import { invitationService } from '../../services/invitation.service';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { showAppwriteError, showSuccessNotification } from '../../services/notifications';
 
 export function InviteSend() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [emails, setEmails] = useState<string[]>(['', '']);
+  const [isLoading, setIsLoading] = useState(false);
   
   const width = Dimensions.get('window').width;
   const height = Dimensions.get('window').height;
@@ -48,22 +53,72 @@ export function InviteSend() {
     }
   };
 
-  const handleNext = () => {
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleNext = async () => {
     const validEmails = emails.filter(email => email.trim() !== '');
-    if (validEmails.length > 0) {
-      // TODO: Send invitations
-      console.log('Sending invitations to:', validEmails);
+    
+    if (validEmails.length === 0) {
+      Alert.alert('Error', 'Please enter at least one email address');
+      return;
+    }
+
+    const invalidEmails = validEmails.filter(email => !validateEmail(email));
+    if (invalidEmails.length > 0) {
+      Alert.alert('Error', `Please enter valid email addresses:\n${invalidEmails.join('\n')}`);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const invitationPromises = validEmails.map(email =>
+        invitationService.createInvitation({ email })
+      );
+
+      await Promise.all(invitationPromises);
+
+      showSuccessNotification(
+          `Invitations sent successfully to ${validEmails.length} ${validEmails.length === 1 ? 'friend' : 'friends'}!`,
+          'Invitations Sent'
+      );
       navigation.navigate(ScreenNames.SUBSCRIPTION);
+    
+    } catch (error: unknown) {
+      showAppwriteError(error, {
+        title: 'Failed to Send Invitations',
+        skipUnauthorized: true,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSkip = () => {
-    // TODO: Handle skip logic
-    console.log('Skip sending invitations');
     navigation.navigate(ScreenNames.SUBSCRIPTION);
   };
 
   const isNextEnabled = emails.some(email => email.trim() !== '');
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <Canvas style={styles.canvas}>
+          <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
+        </Canvas>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <LoadingSpinner />
+            <Text style={styles.loadingText}>Sending invitations...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -72,7 +127,6 @@ export function InviteSend() {
         <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
       </Canvas>
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
         <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <ArrowLeftIcon />
@@ -81,7 +135,6 @@ export function InviteSend() {
             <View style={styles.headerSpacer} />
           </View>
 
-          {/* Main Content */}
           <View style={styles.content}>
             <Text style={styles.title}>
               INVITE UP TO THREE (3) FRIENDS OR LOVED ONES TO JOIN YOU ON YOUR JOURNEY.
@@ -126,7 +179,6 @@ export function InviteSend() {
             </View>
           </View>
 
-          {/* Buttons */}
           <View style={styles.buttonContainer}>
             <Button
               title="Next"
@@ -238,5 +290,16 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#ffffff',
+    fontFamily: 'Roboto_400Regular',
   },
 });

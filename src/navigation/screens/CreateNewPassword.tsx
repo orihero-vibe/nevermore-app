@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,10 @@ import {
   Platform,
   ImageBackground,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Input } from '../../components/Input';
 import { PasswordInput } from '../../components/PasswordInput';
@@ -18,35 +19,84 @@ import { Button } from '../../components/Button';
 import { ScreenNames } from '../../constants/ScreenNames';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import CheckIcon from '../../assets/icons/check';
+import { updatePasswordRecovery } from '../../services/auth.service';
+import { showAppwriteError } from '../../services/notifications';
 
 type RootStackParamList = {
   [ScreenNames.HOME_TABS]: undefined;
+  [ScreenNames.SIGN_IN]: undefined;
+  [ScreenNames.CREATE_NEW_PASSWORD]: {
+    userId?: string;
+    secret?: string;
+  };
 };
 
+type CreateNewPasswordRouteProp = RouteProp<RootStackParamList, ScreenNames.CREATE_NEW_PASSWORD>;
 type CreateNewPasswordNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const CreateNewPassword: React.FC = () => {
   const navigation = useNavigation<CreateNewPasswordNavigationProp>();
+  const route = useRoute<CreateNewPasswordRouteProp>();
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('Qwerty1234!');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(true);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Password validation
+  const userId = route.params?.userId;
+  const secret = route.params?.secret;
+
   const hasCapitalLetter = /[A-Z]/.test(password);
   const hasNumber = /\d/.test(password);
   const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
   const passwordsMatch = password === confirmPassword && password.length > 0;
+  const isValidPassword = hasCapitalLetter && hasNumber && hasSpecialChar && passwordsMatch;
 
-  const handleCreateAccount = async () => {
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Navigate to main app or success screen
-      navigation.navigate(ScreenNames.HOME_TABS);
-    }, 1000);
+  const isFromDeepLink = !!(userId && secret);
+
+  useEffect(() => {
+    if (isFromDeepLink && (!userId || !secret)) {
+      setErrorMessage('Invalid password reset link. Please request a new one.');
+    }
+  }, [userId, secret, isFromDeepLink]);
+
+  const handleResetPassword = async () => {
+    if (!isValidPassword) {
+      return;
+    }
+
+    if (isFromDeepLink && userId && secret) {
+      setIsLoading(true);
+      setErrorMessage('');
+      
+      try {
+        await updatePasswordRecovery(userId, secret, password);
+        Alert.alert(
+          'Success',
+          'Your password has been reset successfully. Please sign in with your new password.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: ScreenNames.SIGN_IN }],
+                });
+              },
+            },
+          ]
+        );
+      } catch (error: unknown) {
+        showAppwriteError(error, { skipUnauthorized: true });
+        const errorMsg = error instanceof Error ? error.message : 'Failed to reset password. Please try again.';
+        setErrorMessage(errorMsg);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setErrorMessage('Invalid password reset link. Please request a new one.');
+    }
   };
 
   const handleBack = () => {
@@ -66,7 +116,6 @@ export const CreateNewPassword: React.FC = () => {
             style={styles.keyboardAvoidingView}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
-            {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity onPress={handleBack} style={styles.backButton}>
                 <ArrowLeftIcon width={24} height={24} color="#ffffff" />
@@ -75,11 +124,9 @@ export const CreateNewPassword: React.FC = () => {
               <View style={styles.headerSpacer} />
             </View>
 
-            {/* Main Content */}
             <View style={styles.content}>
               <Text style={styles.title}>CREATE NEW PASSWORD</Text>
 
-              {/* Password Field */}
               <PasswordInput
                 label="Password"
                 placeholder="Enter password"
@@ -91,7 +138,6 @@ export const CreateNewPassword: React.FC = () => {
                 autoCorrect={false}
               />
 
-              {/* Re-enter Password Field */}
               <PasswordInput
                 label="Re-enter Password"
                 placeholder="Re-enter password"
@@ -104,7 +150,12 @@ export const CreateNewPassword: React.FC = () => {
                 containerStyle={passwordsMatch ? styles.passwordMatchContainer : undefined}
               />
 
-              {/* Password Requirements */}
+              {errorMessage !== '' && (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{errorMessage}</Text>
+                </View>
+              )}
+
               <View style={styles.requirementsContainer}>
                 <View style={styles.requirementItem}>
                   <View style={[styles.checkIcon, hasCapitalLetter && styles.checkIconActive]}>
@@ -135,12 +186,11 @@ export const CreateNewPassword: React.FC = () => {
                 </View>
               </View>
 
-              {/* Create Account Button */}
               <Button
-                title="Create Account"
-                onPress={handleCreateAccount}
+                title="Reset Password"
+                onPress={handleResetPassword}
                 loading={isLoading}
-                disabled={!hasCapitalLetter || !hasNumber || !hasSpecialChar || !passwordsMatch}
+                disabled={!isValidPassword}
                 style={styles.createButton}
                 size="large"
               />
@@ -224,7 +274,6 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   checkIconActive: {
-    // backgroundColor: '#8b5cf6',
     borderColor: '#8b5cf6',
   },
   requirementText: {
@@ -235,5 +284,19 @@ const styles = StyleSheet.create({
   createButton: {
     marginTop: 'auto',
     marginBottom: 40,
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ef4444',
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
   },
 });

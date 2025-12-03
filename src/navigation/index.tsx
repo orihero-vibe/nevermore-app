@@ -12,6 +12,7 @@ import { SignIn } from './screens/SignIn';
 import { SignUp } from './screens/SignUp';
 import { ForgotPassword } from './screens/ForgotPassword';
 import { CreateNewPassword } from './screens/CreateNewPassword';
+import { MagicURLVerify } from './screens/MagicURLVerify';
 import { Permission } from './screens/Permission';
 import { Purpose } from './screens/Purpose';
 import { Nickname } from './screens/Nickname';
@@ -184,6 +185,13 @@ function RootStack({ initialRouteName }: { initialRouteName: string }) {
         }}
       />
       <Stack.Screen
+        name={ScreenNames.MAGIC_URL_VERIFY}
+        component={MagicURLVerify}
+        options={{
+          title: 'Verify Magic URL',
+        }}
+      />
+      <Stack.Screen
         name={ScreenNames.PERMISSION}
         component={Permission}
         options={{
@@ -290,14 +298,46 @@ function RootStack({ initialRouteName }: { initialRouteName: string }) {
 }
 
 const linking = {
-  prefixes: ['nevermoreapp://'],
+  prefixes: [
+    'nevermoreapp://',
+    'https://nevermoreapp.com',
+  ],
   config: {
     screens: {
-      [ScreenNames.CREATE_NEW_PASSWORD]: 'reset-password',
+      [ScreenNames.CREATE_NEW_PASSWORD]: {
+        path: [
+          'reset-password',
+          'create-new-password',
+        ],
+        parse: {
+          userId: (userId: string) => userId,
+          secret: (secret: string) => secret,
+        },
+      },
+      [ScreenNames.MAGIC_URL_VERIFY]: {
+        path: [
+          'verify-magic-url',
+          'verify-magic-url',
+        ],
+        parse: {
+          userId: (userId: string) => userId,
+          secret: (secret: string) => secret,
+        },
+      },
       [ScreenNames.WELCOME]: '',
       [ScreenNames.SIGN_IN]: 'signin',
       [ScreenNames.SIGN_UP]: 'signup',
       [ScreenNames.FORGOT_PASSWORD]: 'forgot-password',
+      [ScreenNames.INVITE]: {
+        path: 'invite',
+        parse: {
+          token: (token: string) => token,
+          userId: (userId: string) => userId,
+          secret: (secret: string) => secret,
+          expire: (expire: string) => expire,
+          project: (project: string) => project,
+        },
+      },
       [ScreenNames.HOME_TABS]: {
         path: 'home',
         screens: {
@@ -314,7 +354,6 @@ export function Navigation(props?: any) {
   const { isAuthenticated } = useAuthStore();
   const navigationRef = useNavigationContainerRef();
 
-  // Determine initial route based on authentication status
   const initialRouteName = isAuthenticated ? ScreenNames.HOME_TABS : ScreenNames.WELCOME;
 
   return (

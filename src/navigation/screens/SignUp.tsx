@@ -35,10 +35,12 @@ export function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const requirements = validatePasswordRequirements(password, confirmPassword);
 
   const handleSignUp = async () => {
+    setErrorMessage(''); // Clear previous errors
     await signUpUser(
       {
         email,
@@ -51,6 +53,7 @@ export function SignUp() {
         onSuccess: () => navigateToPermission(),
         onError: (error) => {
           console.error('Sign up failed:', error);
+          setErrorMessage(error.message || 'An error occurred during sign up. Please try again.');
         },
       }
     );
@@ -116,7 +119,6 @@ export function SignUp() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   textContentType="newPassword"
-                  autoComplete="password-new"
                 />
 
                 <PasswordInput
@@ -129,7 +131,6 @@ export function SignUp() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   textContentType="newPassword"
-                  autoComplete="password-new"
                 />
 
                 <View style={styles.requirementsContainer}>
@@ -184,6 +185,12 @@ export function SignUp() {
                     </Text>
                   </View>
                 </TouchableOpacity>
+
+                {errorMessage !== '' && (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{errorMessage}</Text>
+                  </View>
+                )}
 
                 <Button
                   title={isLoading ? "Creating Account..." : "Create Account"}
@@ -308,6 +315,20 @@ const styles = StyleSheet.create({
   termsLink: {
     color: '#8b5cf6',
     fontFamily: 'Roboto_500Medium',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ef4444',
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
   },
   createAccountButton: {
     marginBottom: 24,

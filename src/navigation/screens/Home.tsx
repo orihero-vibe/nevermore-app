@@ -1,6 +1,6 @@
 import { Cinzel_400Regular } from "@expo-google-fonts/cinzel";
 import { Roboto_400Regular } from "@expo-google-fonts/roboto";
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
@@ -10,13 +10,16 @@ import {
   useImage,
 } from "@shopify/react-native-skia";
 import React, { useEffect, useState } from "react";
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
+  useAnimatedScrollHandler,
   useSharedValue,
   withDelay,
-  withTiming
+  withTiming,
+  interpolate,
+  Extrapolate,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MenuIcon from '../../assets/icons/menu';
@@ -56,6 +59,7 @@ export default function Home() {
   const canvasOpacity = useSharedValue(0);
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-30);
+  const scrollY = useSharedValue(0);
   const categoryScales = useSharedValue<number[]>([]);
   const categoryOpacities = useSharedValue<number[]>([]);
 
@@ -127,10 +131,23 @@ export default function Home() {
     }
   }, [categories]);
 
-  useEffect(() => {
-    if (categories.length === 0 || loading) return;
+  // Reset and animate on screen focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (categories.length === 0 || loading) return;
 
-    const animateComponents = () => {
+      // Reset animation values
+      headerOpacity.value = 0;
+      headerTranslateY.value = -30;
+      canvasOpacity.value = 0;
+      canvasTranslateY.value = 50;
+      
+      if (categories.length > 0) {
+        categoryOpacities.value = categories.map(() => 0);
+        categoryScales.value = categories.map(() => 0);
+      }
+
+      // Start animations
       headerOpacity.value = withTiming(1, { duration: 600 });
       headerTranslateY.value = withTiming(0, { duration: 600 });
       canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
@@ -141,20 +158,35 @@ export default function Home() {
         categoryOpacities.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
         categoryScales.value[index] = withDelay(delay, withTiming(1, { duration: 400 }));
       });
-    };
 
-    const timer = setTimeout(animateComponents, 300);
-    return () => clearTimeout(timer);
-  }, [categories, loading]);
+      return () => {
+        // Cleanup if needed
+      };
+    }, [categories, loading])
+  );
 
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/main-bg.png'));
   const insets = useSafeAreaInsets();
 
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
   const headerAnimatedStyle = useAnimatedStyle(() => {
+    const backgroundColorOpacity = interpolate(
+      scrollY.value,
+      [0, 150],
+      [0, 0.4],
+      Extrapolate.CLAMP
+    );
+
     return {
       opacity: headerOpacity.value,
       transform: [{ translateY: headerTranslateY.value }],
+      backgroundColor: `rgba(0, 0, 0, ${backgroundColorOpacity})`,
     };
   });
 
@@ -188,11 +220,13 @@ export default function Home() {
         style={[styles.scrollContainer, canvasAnimatedStyle]}
         pointerEvents={bottomSheetVisible ? 'none' : 'auto'}
       >
-        <ScrollView
+        <Animated.ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!bottomSheetVisible}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
         >
           <View style={styles.titleContainer}>
             <Text style={styles.titleText}>40 TEMPTATIONS</Text>
@@ -218,7 +252,7 @@ export default function Home() {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </Animated.ScrollView>
       </Animated.View>
 
       <View style={styles.bottomSheetWrapper}>

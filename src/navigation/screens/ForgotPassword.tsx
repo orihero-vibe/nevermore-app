@@ -20,14 +20,23 @@ export const ForgotPassword: React.FC = () => {
   const { goBack } = useAppNavigation();
   const { isLoading, handlePasswordRecovery } = useSignIn();
   const [email, setEmail] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleNext = async () => {
+    setErrorMessage(''); // Clear previous errors
+    setSuccessMessage(''); // Clear previous success messages
     await handlePasswordRecovery(
       email,
       {
-        onSuccess: () => goBack(),
+        onSuccess: () => {
+          setSuccessMessage('We have sent a password reset link to your email address.');
+          // Auto-navigate back after 2 seconds
+          setTimeout(() => goBack(), 2000);
+        },
         onError: (error) => {
           console.error('Password recovery failed:', error);
+          setErrorMessage(error.message || 'Failed to send recovery email. Please try again.');
         },
       }
     );
@@ -69,6 +78,18 @@ export const ForgotPassword: React.FC = () => {
             autoCapitalize="none"
             autoCorrect={false}
           />
+
+          {errorMessage !== '' && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
+
+          {successMessage !== '' && (
+            <View style={styles.successContainer}>
+              <Text style={styles.successText}>{successMessage}</Text>
+            </View>
+          )}
 
           <Button
             title="Next"
@@ -138,6 +159,34 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     lineHeight: 24,
     fontFamily: 'Roboto_400Regular',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ef4444',
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
+  },
+  successContainer: {
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.3)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+  },
+  successText: {
+    fontSize: 14,
+    color: '#22c55e',
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
   },
   nextButton: {
     marginTop: 'auto',

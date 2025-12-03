@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 
 interface PasswordRequirements {
@@ -132,14 +131,17 @@ export const useSignUp = () => {
       data: SignUpData,
       callbacks: {
         onSuccess: () => void;
-        onError?: (error: Error) => void;
+        onError?: (error: Error & { message: string }) => void;
       }
     ): Promise<void> => {
       const { email, password, fullName, nickname } = data;
 
       const validation = validateSignUpForm(data);
       if (!validation.isValid) {
-        Alert.alert('Validation Error', validation.error || 'Please check your input.');
+        const validationError = new Error(validation.error || 'Please check your input.') as Error & { message: string };
+        if (callbacks.onError) {
+          callbacks.onError(validationError);
+        }
         return;
       }
 
@@ -150,10 +152,11 @@ export const useSignUp = () => {
         callbacks.onSuccess();
       } catch (err: any) {
         const errorMessage = parseSignUpError(err);
-        Alert.alert('Sign Up Failed', errorMessage, [{ text: 'OK' }]);
+        const errorWithMessage = new Error(errorMessage) as Error & { message: string };
+        errorWithMessage.message = errorMessage;
 
         if (callbacks.onError) {
-          callbacks.onError(err);
+          callbacks.onError(errorWithMessage);
         }
       }
     },

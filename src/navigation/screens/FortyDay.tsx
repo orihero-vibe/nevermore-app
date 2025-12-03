@@ -6,22 +6,25 @@ import {
   ImageBackground,
   TouchableOpacity,
   Dimensions,
-  ScrollView,
   Pressable,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import Carousel from 'react-native-reanimated-carousel';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedScrollHandler,
   withDelay,
   withTiming,
+  interpolate,
+  Extrapolate,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFortyDayStore } from '../../store/fortyDayStore';
-import { useAudioPlayer } from '../../hooks/useAudioPlayer';
+import { useFortyDayAudioPlayer } from '../../hooks/useFortyDayAudioPlayer';
 import MenuIcon from '../../assets/icons/menu';
 import FlagIcon from '../../assets/icons/flag';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
@@ -34,10 +37,11 @@ import SoundWaveIcon from '../../assets/icons/sound-wave';
 import CheckmarkIcon from '../../assets/icons/checkmark';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH * 0.7;
+const CARD_WIDTH = SCREEN_WIDTH * 0.68;
 
 export const FortyDay = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   
   const { 
     currentDay, 
@@ -46,8 +50,9 @@ export const FortyDay = () => {
     error, 
     setCurrentDay, 
     toggleTask, 
-    loadFortyDayContent 
+    loadFortyDayContent ,
   } = useFortyDayStore();
+
   
   const carouselRef = useRef<any>(null);
   const [activeIndex, setActiveIndex] = useState(() => {
@@ -55,35 +60,52 @@ export const FortyDay = () => {
     return Math.max(0, Math.min(currentDay - 1, days.length - 1));
   });
   
-  const audioPlayer = useAudioPlayer();
+  const audioPlayer = useFortyDayAudioPlayer();
   
-  // Animation values matching Home screen pattern
   const canvasTranslateY = useSharedValue(50);
   const canvasOpacity = useSharedValue(0);
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-30);
+  const scrollY = useSharedValue(0);
 
   useEffect(() => {
     loadFortyDayContent();
   }, []);
 
-  // Animation effect - start animations immediately
-  useEffect(() => {
-    // Always animate header immediately on mount
-    headerOpacity.value = withTiming(1, { duration: 600 });
-    headerTranslateY.value = withTiming(0, { duration: 600 });
-    
-    // Animate content when data is ready
-    if (days.length > 0) {
+  useFocusEffect(
+    React.useCallback(() => {
+      headerOpacity.value = 0;
+      headerTranslateY.value = -30;
+      canvasOpacity.value = 0;
+      canvasTranslateY.value = 50;
+      
+      headerOpacity.value = withTiming(1, { duration: 600 });
+      headerTranslateY.value = withTiming(0, { duration: 600 });
+      
+      // Always animate canvas in - loading/error/content states are handled inside
       canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
       canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
-    }
-  }, [days.length]);
+    }, [])
+  );
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
+    const backgroundColorOpacity = interpolate(
+      scrollY.value,
+      [0, 150],
+      [0, 0.4],
+      Extrapolate.CLAMP
+    );
+
     return {
       opacity: headerOpacity.value,
       transform: [{ translateY: headerTranslateY.value }],
+      backgroundColor: `rgba(0, 0, 0, ${backgroundColorOpacity})`,
     };
   });
 
@@ -103,13 +125,10 @@ export const FortyDay = () => {
     }
   }, [days.length, currentDay]);
 
+  // Unload audio when switching days to clean up resources
+  // Audio will only load when user clicks play button
   useEffect(() => {
-    const currentDayData = days[activeIndex];
-    if (currentDayData?.audioUrl) {
-      audioPlayer.loadAudio(currentDayData.audioUrl);
-    } else {
-      audioPlayer.unloadAudio();
-    }
+    audioPlayer.unloadAudio();
   }, [activeIndex]);
 
   const currentDayData = days[activeIndex];
@@ -128,6 +147,22 @@ export const FortyDay = () => {
 
   const handleTaskToggle = (taskId: string) => {
     toggleTask(currentDayData.day, taskId);
+  };
+
+  const handlePlayPause = async (audioUrl: string) => {
+    if (audioPlayer.isLoading) {
+      return; // Don't do anything if already loading
+    }
+
+    // If playing, just pause
+    if (audioPlayer.isPlaying) {
+      await audioPlayer.pause();
+      return;
+    }
+
+    // Load audio if not loaded, then play
+    await audioPlayer.loadAudio(audioUrl);
+    await audioPlayer.play();
   };
 
   const renderCarouselItem = ({ item }: { item: typeof days[0] }) => {
@@ -150,7 +185,7 @@ export const FortyDay = () => {
             </View>
 
             <View style={styles.cardContent}>
-              <Text style={styles.dayLabel}>DAY</Text>
+              <Text style={styles.dayLabel}>{item.title}</Text>
               <Text style={styles.dayNumber}>{item.day}</Text>
               <Text style={styles.completionText}>
                 Completed: <Text style={styles.completionPercentage}>{item.completionPercentage}%</Text>
@@ -158,27 +193,34 @@ export const FortyDay = () => {
             </View>
 
             <View style={styles.mediaControls}>
+              {isCurrentItem && audioPlayer.isLoading ? (
+                <View style={styles.mediaButton}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                </View>
+              ) : (
+                <TouchableOpacity 
+                  style={[
+                    styles.mediaButton,
+                    !item.audioUrl && styles.mediaButtonDisabled
+                  ]}
+                  onPress={() => isCurrentItem && item.audioUrl && handlePlayPause(item.audioUrl)}
+                  disabled={!item.audioUrl}
+                >
+                  {isCurrentItem && audioPlayer.isPlaying ? (
+                    <PauseIcon width={20} height={20} />
+                  ) : (
+                    <PlayIcon width={20} height={20} />
+                  )}
+                </TouchableOpacity>
+              )}
               <TouchableOpacity 
                 style={[
                   styles.mediaButton,
-                  !item.audioUrl && styles.mediaButtonDisabled
-                ]}
-                onPress={() => isCurrentItem && item.audioUrl && audioPlayer.togglePlayPause()}
-                disabled={!item.audioUrl}
-              >
-                {isCurrentItem && audioPlayer.isPlaying ? (
-                  <PauseIcon width={20} height={20} />
-                ) : (
-                  <PlayIcon width={20} height={20} />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[
-                  styles.mediaButton,
-                  !item.audioUrl && styles.mediaButtonDisabled
+                  !item.audioUrl && styles.mediaButtonDisabled,
+                  isCurrentItem && audioPlayer.isLoading && styles.mediaButtonDisabled
                 ]}
                 onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
-                disabled={!item.audioUrl}
+                disabled={!item.audioUrl || (isCurrentItem && audioPlayer.isLoading)}
               >
                 {isCurrentItem && audioPlayer.isMuted ? (
                   <VolumeMutedIcon width={20} height={20} />
@@ -195,15 +237,15 @@ export const FortyDay = () => {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
+      <Animated.View style={[styles.header, { paddingTop: insets.top }, headerAnimatedStyle]}>
         <TouchableOpacity 
           style={styles.menuButton}
           onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
         >
-          <MenuIcon width={24} height={24} />
+          <MenuIcon />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nevermore</Text>
-        <View style={styles.menuButton} />
+        <View style={styles.headerRight} />
       </Animated.View>
 
       <Animated.View style={[styles.backgroundContainer, canvasAnimatedStyle]}>
@@ -215,12 +257,14 @@ export const FortyDay = () => {
       </Animated.View>
 
       <Animated.View style={[styles.scrollContainer, canvasAnimatedStyle]}>
-        <ScrollView
+        <Animated.ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollViewContent}
+          contentContainerStyle={[styles.scrollViewContent, { paddingBottom: 100 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
         >
-        <View style={styles.headerSpacer} />
+        <View style={[styles.headerSpacer, { height: insets.top + 100 }]} />
         <Text style={styles.mainTitle}>40 DAY JOURNEY</Text>
 
         {loading && (
@@ -325,9 +369,7 @@ export const FortyDay = () => {
                           </View>
                         </View>
 
-                        <View style={styles.checkbox}>
-                          {/* Empty checkbox */}
-                        </View>
+                        <View style={styles.checkbox} />
                       </View>
                     )}
                   </Pressable>
@@ -336,7 +378,7 @@ export const FortyDay = () => {
             </View>
           </>
         )}
-        </ScrollView>
+        </Animated.ScrollView>
       </Animated.View>
     </View>
   );
@@ -375,25 +417,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
     paddingBottom: 20,
-    zIndex: 10,
-    backgroundColor: 'transparent',
+    zIndex: 1000,
+    elevation: 1000,
   },
   headerSpacer: {
-    height: 120, // paddingTop (60) + paddingBottom (20) + content height (~40)
+    height: 100,
   },
   menuButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   headerTitle: {
-    fontFamily: 'Cinzel_400Regular',
-    fontSize: 18,
     color: '#fff',
-    letterSpacing: 1,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  headerRight: {
+    width: 40,
   },
   mainTitle: {
     fontFamily: 'Cinzel_600SemiBold',
@@ -432,10 +472,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   navButtonLeft: {
-    marginRight: 15,
+    marginRight: 8,
   },
   navButtonRight: {
-    marginLeft: 15,
+    marginLeft: 8,
   },
   card: {
     width: CARD_WIDTH,
@@ -478,6 +518,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     letterSpacing: 2,
     marginBottom: 8,
+    textTransform: 'uppercase',
   },
   dayNumber: {
     fontFamily: 'Cinzel_900Black',
@@ -524,7 +565,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tasksList: {
-    // Removed flex: 1 since it's now inside ScrollView
   },
   taskItemWrapper: {
     marginBottom: 12,
