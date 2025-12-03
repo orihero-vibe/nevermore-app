@@ -50,8 +50,9 @@ export const FortyDay = () => {
     error, 
     setCurrentDay, 
     toggleTask, 
-    loadFortyDayContent 
+    loadFortyDayContent ,
   } = useFortyDayStore();
+
   
   const carouselRef = useRef<any>(null);
   const [activeIndex, setActiveIndex] = useState(() => {
@@ -81,12 +82,10 @@ export const FortyDay = () => {
       headerOpacity.value = withTiming(1, { duration: 600 });
       headerTranslateY.value = withTiming(0, { duration: 600 });
       
-      if (days.length > 0) {
-        canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-        canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
-      }
-
-    }, [days.length])
+      // Always animate canvas in - loading/error/content states are handled inside
+      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+    }, [])
   );
 
   const scrollHandler = useAnimatedScrollHandler({
@@ -126,14 +125,11 @@ export const FortyDay = () => {
     }
   }, [days.length, currentDay]);
 
+  // Unload audio when switching days to clean up resources
+  // Audio will only load when user clicks play button
   useEffect(() => {
-    const currentDayData = days[activeIndex];
-    if (currentDayData?.audioUrl) {
-      audioPlayer.loadAudio(currentDayData.audioUrl);
-    } else {
-      audioPlayer.unloadAudio();
-    }
-  }, [activeIndex, days]);
+    audioPlayer.unloadAudio();
+  }, [activeIndex]);
 
   const currentDayData = days[activeIndex];
 
@@ -189,7 +185,7 @@ export const FortyDay = () => {
             </View>
 
             <View style={styles.cardContent}>
-              <Text style={styles.dayLabel}>DAY</Text>
+              <Text style={styles.dayLabel}>{item.title}</Text>
               <Text style={styles.dayNumber}>{item.day}</Text>
               <Text style={styles.completionText}>
                 Completed: <Text style={styles.completionPercentage}>{item.completionPercentage}%</Text>
@@ -522,6 +518,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     letterSpacing: 2,
     marginBottom: 8,
+    textTransform: 'uppercase',
   },
   dayNumber: {
     fontFamily: 'Cinzel_900Black',

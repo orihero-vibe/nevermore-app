@@ -2,6 +2,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState, useEffect } from 'react';
 import {
+    ActivityIndicator,
     Dimensions,
     StatusBar,
     StyleSheet,
@@ -31,6 +32,7 @@ import { account } from '../../services/appwrite.config';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { showAppwriteError, showSuccessNotification } from '../../services/notifications';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useWelcomeQuote } from '../../hooks/useWelcomeQuote';
 
 type RootStackParamList = {
   [ScreenNames.INVITE]: {
@@ -52,6 +54,7 @@ export function Invite() {
     const navigation = useNavigation<InviteNavigationProp>();
     const route = useRoute<InviteRouteProp>();
     const { navigateToInviteSend, navigateToHomeTabs, navigateToSignUp } = useAppNavigation();
+    const { quote, loading: quoteLoading } = useWelcomeQuote();
     
     const [isLoading, setIsLoading] = useState(false);
     const [isProcessingInvitation, setIsProcessingInvitation] = useState(false);
@@ -231,11 +234,24 @@ export function Invite() {
 
                         <View style={styles.quoteSection}>
                             <QuoteIcon />
-                            <Text style={styles.quoteText}>
-                                "The opposite of addiction is not sobriety.{'\n'}
-                                The opposite of addiction is connection."
-                            </Text>
-                            <Text style={styles.quoteAuthor}>- Johann Hari</Text>
+                            {quoteLoading ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" style={styles.quoteLoader} />
+                            ) : quote ? (
+                                <>
+                                    <Text style={styles.quoteText}>
+                                        "{quote.quote}"
+                                    </Text>
+                                    <Text style={styles.quoteAuthor}>- {quote.author}</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={styles.quoteText}>
+                                        "The opposite of addiction is not sobriety.{'\n'}
+                                        The opposite of addiction is connection."
+                                    </Text>
+                                    <Text style={styles.quoteAuthor}>- Johann Hari</Text>
+                                </>
+                            )}
                         </View>
                     </View>
 
@@ -347,6 +363,9 @@ const styles = StyleSheet.create({
     quoteIcon: {
         marginBottom: 16,
     },
+    quoteLoader: {
+        marginVertical: 20,
+    },
     quoteText: {
         fontSize: 18,
         color: '#ffffff',
@@ -354,6 +373,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 26,
         marginBottom: 12,
+        marginTop: 16,
     },
     quoteAuthor: {
         fontSize: 14,

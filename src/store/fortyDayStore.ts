@@ -16,6 +16,7 @@ export interface Task {
 
 export interface DayData {
   day: number;
+  title: string;
   completionPercentage: number;
   tasks: Task[];
   audioUrl?: string;
@@ -143,12 +144,14 @@ export const useFortyDayStore = create<FortyDayState>()(
       },
 
       loadFortyDayContent: async () => {
-        set({ loading: true, error: null });
+        console.log('loadFortyDayContent called - fetching from Appwrite...');
+        set({ loading: true, error: null, days: [] });
         
         try {
           const fortyDayContent = await contentService.getFortyDayContent();
           
           console.log(`Loaded ${fortyDayContent.length} forty day journey items`);
+          console.log('Raw content from Appwrite:', fortyDayContent.map(c => ({ day: c.day, title: c.title, $id: c.$id })));
           
           if (fortyDayContent.length === 0) {
             set({ 
@@ -195,6 +198,7 @@ export const useFortyDayStore = create<FortyDayState>()(
             
             return {
               day: dayNumber,
+              title: content.title || `Day ${dayNumber}`,
               completionPercentage,
               tasks,
               audioUrl,
@@ -205,6 +209,7 @@ export const useFortyDayStore = create<FortyDayState>()(
             totalDays: days.length,
             sampleDay: days[0],
             dayNumber: days[0]?.day,
+            dayTitle: days[0]?.title,
             totalTasks: days[0]?.tasks.length,
             hasAudio: !!days[0]?.audioUrl,
           });

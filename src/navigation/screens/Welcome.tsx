@@ -15,6 +15,7 @@ import { ScreenNames } from '../../constants/ScreenNames';
 
 export function Welcome() {
   const navigation = useNavigation();
+  
   const [cinzelFontsLoaded] = useFonts({
     Cinzel_400Regular,
     Cinzel_600SemiBold,

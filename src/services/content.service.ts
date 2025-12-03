@@ -5,6 +5,7 @@ import { APPWRITE_DATABASE_ID, APPWRITE_CONTENT_COLLECTION_ID } from '@env';
 export interface Content {
   $id: string;
   title: string;
+  day?: number;
   role?: string;
   category?: string | { $id: string; name?: string; title?: string; label?: string; [key: string]: unknown };
   type: string;
