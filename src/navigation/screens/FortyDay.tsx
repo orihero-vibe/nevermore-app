@@ -9,8 +9,9 @@ import {
   Pressable,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { BlurView } from 'expo-blur';
 import Carousel from 'react-native-reanimated-carousel';
 import Animated, {
@@ -40,7 +41,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.68;
 
 export const FortyDay = () => {
-  const navigation = useNavigation();
+  const { raw: navigation, navigateToHelpSupport } = useAppNavigation();
   const insets = useSafeAreaInsets();
   
   const { 
@@ -62,8 +63,8 @@ export const FortyDay = () => {
   
   const audioPlayer = useFortyDayAudioPlayer();
   
-  const canvasTranslateY = useSharedValue(50);
-  const canvasOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(50);
+  const contentOpacity = useSharedValue(0);
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-30);
   const scrollY = useSharedValue(0);
@@ -76,15 +77,15 @@ export const FortyDay = () => {
     React.useCallback(() => {
       headerOpacity.value = 0;
       headerTranslateY.value = -30;
-      canvasOpacity.value = 0;
-      canvasTranslateY.value = 50;
+      contentOpacity.value = 0;
+      contentTranslateY.value = 50;
       
       headerOpacity.value = withTiming(1, { duration: 600 });
       headerTranslateY.value = withTiming(0, { duration: 600 });
       
-      // Always animate canvas in - loading/error/content states are handled inside
-      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+      // Animate content in - background is always visible to prevent black screen
+      contentOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+      contentTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
     }, [])
   );
 
@@ -109,10 +110,10 @@ export const FortyDay = () => {
     };
   });
 
-  const canvasAnimatedStyle = useAnimatedStyle(() => {
+  const contentAnimatedStyle = useAnimatedStyle(() => {
     return {
-      opacity: canvasOpacity.value,
-      transform: [{ translateY: canvasTranslateY.value }],
+      opacity: contentOpacity.value,
+      transform: [{ translateY: contentTranslateY.value }],
     };
   });
 
@@ -160,9 +161,8 @@ export const FortyDay = () => {
       return;
     }
 
-    // Load audio if not loaded, then play
-    await audioPlayer.loadAudio(audioUrl);
-    await audioPlayer.play();
+    // Load and play audio in one call to avoid React state race condition
+    await audioPlayer.loadAndPlay(audioUrl);
   };
 
   const renderCarouselItem = ({ item }: { item: typeof days[0] }) => {
@@ -179,10 +179,13 @@ export const FortyDay = () => {
           <View style={styles.cardOverlay} />
           <View style={styles.cardContentWrapper}>
             <View style={styles.cardHeader}>
-              <TouchableOpacity style={styles.flagButton}>
-                <FlagIcon width={30} height={30} />
-              </TouchableOpacity>
-            </View>
+                              <TouchableOpacity 
+                                style={styles.flagButton}
+                                onPress={() => navigateToHelpSupport({ preSelectedReason: 'Inappropriate Content' })}
+                              >
+                                <FlagIcon width={30} height={30} />
+                              </TouchableOpacity>
+                            </View>
 
             <View style={styles.cardContent}>
               <Text style={styles.dayLabel}>{item.title}</Text>
@@ -248,15 +251,15 @@ export const FortyDay = () => {
         <View style={styles.headerRight} />
       </Animated.View>
 
-      <Animated.View style={[styles.backgroundContainer, canvasAnimatedStyle]}>
+      <View style={styles.backgroundContainer}>
         <ImageBackground
           source={require('../../assets/main-bg.png')}
           style={styles.backgroundImage}
           resizeMode="cover"
         />
-      </Animated.View>
+      </View>
 
-      <Animated.View style={[styles.scrollContainer, canvasAnimatedStyle]}>
+      <Animated.View style={[styles.scrollContainer, contentAnimatedStyle]}>
         <Animated.ScrollView
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollViewContent, { paddingBottom: 100 + insets.bottom }]}

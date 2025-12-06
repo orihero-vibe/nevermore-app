@@ -1,5 +1,6 @@
 import { useAudioPlayer as useExpoAudioPlayer, AudioSource } from 'expo-audio';
 import { useEffect, useRef, useState } from 'react';
+import { audioCacheService } from '../services/audioCache.service';
 
 interface UseAudioPlayerReturn {
   isPlaying: boolean;
@@ -93,12 +94,13 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
       setIsLoading(true);
       setIsPlaying(false);
 
-      if (player.playing) {
-        player.pause();
-        setIsPlaying(false);
-      }
+      // Always pause before loading new audio to prevent overlap
+      player.pause();
 
-      const audioSource: AudioSource = { uri };
+      // Get cached audio URI (downloads if not cached)
+      const cachedUri = await audioCacheService.getAudioUri(uri);
+      
+      const audioSource: AudioSource = { uri: cachedUri };
       await player.replace(audioSource);
 
       // Wait for duration to be available
@@ -190,15 +192,15 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
 
   const stop = async () => {
     try {
-      if (!currentUri) {
-        return;
-      }
-
+      // Always try to pause, regardless of currentUri state
       player.pause();
       setIsPlaying(false);
-      await player.seekTo(0);
-      setCurrentTime('00:00');
-      setProgress(0);
+      
+      if (currentUri) {
+        await player.seekTo(0);
+        setCurrentTime('00:00');
+        setProgress(0);
+      }
     } catch (error) {
     }
   };

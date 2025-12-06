@@ -55,8 +55,8 @@ export function Bookmark() {
   // Reanimated shared values for entrance animations
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-30);
-  const canvasOpacity = useSharedValue(0);
-  const canvasTranslateY = useSharedValue(50);
+  const contentOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(50);
   const bookmarkScales = useSharedValue<number[]>([]);
   const bookmarkOpacities = useSharedValue<number[]>([]);
 
@@ -86,8 +86,8 @@ export function Bookmark() {
       // Reset animation values
       headerOpacity.value = 0;
       headerTranslateY.value = -30;
-      canvasOpacity.value = 0;
-      canvasTranslateY.value = 50;
+      contentOpacity.value = 0;
+      contentTranslateY.value = 50;
       
       const currentBookmarks = getFilteredBookmarks(activeTab);
       if (currentBookmarks.length > 0) {
@@ -99,8 +99,9 @@ export function Bookmark() {
       headerOpacity.value = withTiming(1, { duration: 600 });
       headerTranslateY.value = withTiming(0, { duration: 600 });
       
-      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+      // Animate content in - background is always visible to prevent black screen
+      contentOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+      contentTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
 
       // Animate bookmarks
       if (currentBookmarks.length > 0) {
@@ -124,10 +125,10 @@ export function Bookmark() {
     };
   });
 
-  const canvasAnimatedStyle = useAnimatedStyle(() => {
+  const contentAnimatedStyle = useAnimatedStyle(() => {
     return {
-      opacity: canvasOpacity.value,
-      transform: [{ translateY: canvasTranslateY.value }],
+      opacity: contentOpacity.value,
+      transform: [{ translateY: contentTranslateY.value }],
     };
   });
 
@@ -177,21 +178,27 @@ export function Bookmark() {
         <View style={styles.headerRight} />
       </Animated.View>
    
-        <Animated.View style={[styles.canvasTouchable, canvasAnimatedStyle]}>
-          <TouchableOpacity 
-            style={styles.canvasTouchable}
-            activeOpacity={1}
-            onPress={(event) => {
-              const { locationY } = event.nativeEvent;
-              const bookmarkIndex = Math.floor((locationY - 240) / 90);
-              if (bookmarkIndex >= 0 && bookmarkIndex < filteredBookmarks.length) {
-                handleBookmarkPress(filteredBookmarks[bookmarkIndex], bookmarkIndex);
-              }
-            }}
-          >
-          <Canvas style={styles.canvas}>
-            <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
+      {/* Background Canvas - always visible to prevent black screen */}
+      <View style={styles.backgroundContainer}>
+        <Canvas style={styles.canvas}>
+          <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
+        </Canvas>
+      </View>
 
+      {/* Content - animated */}
+      <Animated.View style={[styles.canvasTouchable, contentAnimatedStyle]}>
+        <TouchableOpacity 
+          style={styles.canvasTouchable}
+          activeOpacity={1}
+          onPress={(event) => {
+            const { locationY } = event.nativeEvent;
+            const bookmarkIndex = Math.floor((locationY - 240) / 90);
+            if (bookmarkIndex >= 0 && bookmarkIndex < filteredBookmarks.length) {
+              handleBookmarkPress(filteredBookmarks[bookmarkIndex], bookmarkIndex);
+            }
+          }}
+        >
+          <Canvas style={styles.canvas}>
             <SkiaText
               text="BOOKMARK"
               font={headerText}
@@ -254,7 +261,7 @@ export function Bookmark() {
             ItemSeparatorComponent={() => <View style={styles.separator} />}
           />
         )}
-        </Animated.View>
+      </Animated.View>
     </View>
   );
 }
@@ -287,6 +294,13 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 40,
+  },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   canvasTouchable: {
     flex: 1,

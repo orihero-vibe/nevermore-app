@@ -46,7 +46,9 @@ export type RootStackParamList = {
   [ScreenNames.MANAGE_INVITES]: undefined;
   [ScreenNames.PRIVACY_POLICY]: undefined;
   [ScreenNames.TERMS_CONDITIONS]: undefined;
-  [ScreenNames.HELP_SUPPORT]: undefined;
+  [ScreenNames.HELP_SUPPORT]: {
+    preSelectedReason?: string;
+  } | undefined;
   [ScreenNames.SETTINGS]: undefined;
   [ScreenNames.NOT_FOUND]: undefined;
 };
@@ -88,7 +90,8 @@ export const useAppNavigation = () => {
     navigateToManageInvites: () => navigation.navigate(ScreenNames.MANAGE_INVITES),
     navigateToPrivacyPolicy: () => navigation.navigate(ScreenNames.PRIVACY_POLICY),
     navigateToTermsConditions: () => navigation.navigate(ScreenNames.TERMS_CONDITIONS),
-    navigateToHelpSupport: () => navigation.navigate(ScreenNames.HELP_SUPPORT),
+    navigateToHelpSupport: (params?: { preSelectedReason?: string }) => 
+      navigation.navigate(ScreenNames.HELP_SUPPORT, params),
     raw: navigation,
   };
 };
