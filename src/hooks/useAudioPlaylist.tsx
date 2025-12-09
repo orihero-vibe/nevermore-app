@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAudioPlayer } from './useAudioPlayer';
 
 interface UseAudioPlaylistReturn {
@@ -15,6 +15,8 @@ interface UseAudioPlaylistReturn {
 export function useAudioPlaylist(autoPlay: boolean = true): UseAudioPlaylistReturn {
   const [selectedAudioIndex, setSelectedAudioIndex] = useState<number>(0);
   const [audioUrls, setAudioUrls] = useState<string[]>([]);
+  const [pendingAutoPlay, setPendingAutoPlay] = useState(false);
+  const prevIsLoadingRef = useRef(false);
   const audioPlayer = useAudioPlayer();
 
   // Load audio when selectedAudioIndex changes
@@ -35,6 +37,17 @@ export function useAudioPlaylist(autoPlay: boolean = true): UseAudioPlaylistRetu
     };
   }, [selectedAudioIndex, audioUrls]);
 
+  // Auto-play when loading completes (transitions from loading to not loading)
+  useEffect(() => {
+    const loadingJustFinished = prevIsLoadingRef.current && !audioPlayer.isLoading;
+    prevIsLoadingRef.current = audioPlayer.isLoading;
+    
+    if (pendingAutoPlay && loadingJustFinished) {
+      setPendingAutoPlay(false);
+      audioPlayer.play();
+    }
+  }, [pendingAutoPlay, audioPlayer.isLoading]);
+
   /**
    * Handle audio selection with toggle play/pause or auto-play
    */
@@ -52,15 +65,15 @@ export function useAudioPlaylist(autoPlay: boolean = true): UseAudioPlaylistRetu
         await audioPlayer.play();
       }
     } else {
+      // Stop current audio before switching to prevent overlap
+      await audioPlayer.stop();
+      
       // Select new audio - useEffect will handle loading
       setSelectedAudioIndex(index);
       
-      // Auto-play after the useEffect loads the new audio if enabled
+      // Set pending auto-play - will trigger when loading completes
       if (autoPlay) {
-        // Small delay to ensure audio is loaded
-        setTimeout(async () => {
-          await audioPlayer.play();
-        }, 100);
+        setPendingAutoPlay(true);
       }
     }
   }, [audioUrls, selectedAudioIndex, audioPlayer, autoPlay]);

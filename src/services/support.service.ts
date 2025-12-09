@@ -2,6 +2,7 @@ import { ID, Models, Query } from 'react-native-appwrite';
 import { tablesDB } from './appwrite.config';
 import { APPWRITE_DATABASE_ID, APPWRITE_SUPPORT_COLLECTION_ID } from '@env';
 
+
 export type SupportReason = 
   | 'bug-issue'
   | 'feedback'
@@ -60,11 +61,12 @@ class SupportService {
   }: CreateSupportTicketParams): Promise<Models.Document> {
     try {
       this.validateConfig();
+      const rowId = ID.unique();
 
       const ticket = await tablesDB.createRow({
         databaseId: APPWRITE_DATABASE_ID,
         tableId: APPWRITE_SUPPORT_COLLECTION_ID,
-        rowId: ID.unique(),
+        rowId,
         data: {
           status: 'new',
           message: message.trim(),

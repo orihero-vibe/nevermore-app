@@ -55,8 +55,8 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedTemptation, setSelectedTemptation] = useState<string>('');
   const [categoryContent, setCategoryContent] = useState<Record<string, TemptationItem[]>>({});
-  const canvasTranslateY = useSharedValue(50);
-  const canvasOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(50);
+  const contentOpacity = useSharedValue(0);
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-30);
   const scrollY = useSharedValue(0);
@@ -139,8 +139,8 @@ export default function Home() {
       // Reset animation values
       headerOpacity.value = 0;
       headerTranslateY.value = -30;
-      canvasOpacity.value = 0;
-      canvasTranslateY.value = 50;
+      contentOpacity.value = 0;
+      contentTranslateY.value = 50;
       
       if (categories.length > 0) {
         categoryOpacities.value = categories.map(() => 0);
@@ -150,8 +150,9 @@ export default function Home() {
       // Start animations
       headerOpacity.value = withTiming(1, { duration: 600 });
       headerTranslateY.value = withTiming(0, { duration: 600 });
-      canvasOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
-      canvasTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
+      // Animate content in - background is always visible to prevent black screen
+      contentOpacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+      contentTranslateY.value = withDelay(200, withTiming(0, { duration: 800 }));
       
       categories.forEach((_, index) => {
         const delay = 400 + (index * 150);
@@ -190,10 +191,10 @@ export default function Home() {
     };
   });
 
-  const canvasAnimatedStyle = useAnimatedStyle(() => {
+  const contentAnimatedStyle = useAnimatedStyle(() => {
     return {
-      opacity: canvasOpacity.value,
-      transform: [{ translateY: canvasTranslateY.value }],
+      opacity: contentOpacity.value,
+      transform: [{ translateY: contentTranslateY.value }],
     };
   });
 
@@ -210,14 +211,14 @@ export default function Home() {
         <View style={styles.headerRight} />
       </Animated.View>
 
-      <Animated.View style={[styles.backgroundContainer, canvasAnimatedStyle]}>
+      <View style={styles.backgroundContainer}>
         <Canvas style={styles.backgroundCanvas}>
           <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
         </Canvas>
-      </Animated.View>
+      </View>
 
       <Animated.View 
-        style={[styles.scrollContainer, canvasAnimatedStyle]}
+        style={[styles.scrollContainer, contentAnimatedStyle]}
         pointerEvents={bottomSheetVisible ? 'none' : 'auto'}
       >
         <Animated.ScrollView

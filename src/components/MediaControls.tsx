@@ -1,5 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, PanResponder } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, LayoutChangeEvent } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, runOnJS } from 'react-native-reanimated';
 import BackwardIcon from '../assets/icons/backward10';
 import Forward10Icon from '../assets/icons/forward10';
 import PlayIcon from '../assets/icons/play';
@@ -32,50 +34,64 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
   onSeek,
 }) => {
   const progressWidth = Math.min(Math.max(progress * 100, 0), 100);
-  const progressBarRef = React.useRef<View>(null);
   
-  // PanResponder for handling drag gestures
-  const panResponder = React.useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => !isLoading && !!onSeek,
-        onMoveShouldSetPanResponder: () => !isLoading && !!onSeek,
-        onPanResponderGrant: (event) => {
-          if (!onSeek || isLoading || !progressBarRef.current) return;
-          
-          progressBarRef.current.measureInWindow((x, y, width, height) => {
-            if (width > 0) {
-              const relativeX = event.nativeEvent.pageX - x;
-              const newProgress = Math.max(0, Math.min(1, relativeX / width));
-              onSeek(newProgress);
-            }
-          });
-        },
-        onPanResponderMove: (event) => {
-          if (!onSeek || isLoading || !progressBarRef.current) return;
-          
-          progressBarRef.current.measureInWindow((x, y, width, height) => {
-            if (width > 0) {
-              const relativeX = event.nativeEvent.pageX - x;
-              const newProgress = Math.max(0, Math.min(1, relativeX / width));
-              onSeek(newProgress);
-            }
-          });
-        },
-        onPanResponderRelease: (event) => {
-          if (!onSeek || isLoading || !progressBarRef.current) return;
-          
-          progressBarRef.current.measureInWindow((x, y, width, height) => {
-            if (width > 0) {
-              const relativeX = event.nativeEvent.pageX - x;
-              const newProgress = Math.max(0, Math.min(1, relativeX / width));
-              onSeek(newProgress);
-            }
-          });
-        },
-      }),
-    [onSeek, isLoading]
+  // Store width from layout
+  const barWidth = useSharedValue(0);
+  
+  const handleLayout = React.useCallback((event: LayoutChangeEvent) => {
+    barWidth.value = event.nativeEvent.layout.width;
+  }, [barWidth]);
+  
+  // Stable callback ref for seek
+  const handleSeek = React.useCallback((newProgress: number) => {
+    if (onSeek && !isLoading) {
+      onSeek(newProgress);
+    }
+  }, [onSeek, isLoading]);
+  
+  // Pan gesture for slider - works reliably on iOS inside ScrollView
+  const panGesture = React.useMemo(() => 
+    Gesture.Pan()
+      .onStart((event) => {
+        'worklet';
+        if (barWidth.value <= 0) return;
+        const newProgress = Math.max(0, Math.min(1, event.x / barWidth.value));
+        runOnJS(handleSeek)(newProgress);
+      })
+      .onUpdate((event) => {
+        'worklet';
+        if (barWidth.value <= 0) return;
+        const newProgress = Math.max(0, Math.min(1, event.x / barWidth.value));
+        runOnJS(handleSeek)(newProgress);
+      })
+      .onEnd((event) => {
+        'worklet';
+        if (barWidth.value <= 0) return;
+        const newProgress = Math.max(0, Math.min(1, event.x / barWidth.value));
+        runOnJS(handleSeek)(newProgress);
+      })
+      .minDistance(0)
+      .activeOffsetX([-5, 5]) // Activate gesture quickly for horizontal movement
+      .failOffsetY([-20, 20]) // Fail if vertical movement detected (let scroll handle it)
+      .enabled(!isLoading && !!onSeek),
+    [barWidth, handleSeek, isLoading, onSeek]
   );
+  
+  // Tap gesture for direct seeking
+  const tapGesture = React.useMemo(() =>
+    Gesture.Tap()
+      .onEnd((event) => {
+        'worklet';
+        if (barWidth.value <= 0) return;
+        const newProgress = Math.max(0, Math.min(1, event.x / barWidth.value));
+        runOnJS(handleSeek)(newProgress);
+      })
+      .enabled(!isLoading && !!onSeek),
+    [barWidth, handleSeek, isLoading, onSeek]
+  );
+  
+  // Combine tap and pan gestures
+  const composedGesture = Gesture.Race(tapGesture, panGesture);
   
   return (
     <View style={styles.mediaPlayerCard}>
@@ -104,15 +120,16 @@ export const MediaControls: React.FC<MediaControlsProps> = ({
       </View>
 
       <View style={styles.progressContainer}>
-        <View
-          ref={progressBarRef}
-          style={styles.progressBarTouchArea}
-          {...panResponder.panHandlers}
-        >
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progressWidth}%` }]} />
-          </View>
-        </View>
+        <GestureDetector gesture={composedGesture}>
+          <Animated.View
+            style={styles.progressBarTouchArea}
+            onLayout={handleLayout}
+          >
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${progressWidth}%` }]} />
+            </View>
+          </Animated.View>
+        </GestureDetector>
         <View style={styles.timeContainer}>
           <Text style={styles.timeText}>{currentTime}</Text>
           <Text style={styles.timeText}>{totalTime}</Text>

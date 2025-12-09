@@ -1,5 +1,6 @@
 import { useAudioPlayer as useExpoAudioPlayer, AudioSource } from 'expo-audio';
 import { useEffect, useRef, useState } from 'react';
+import { audioCacheService } from '../services/audioCache.service';
 
 interface UseFortyDayAudioPlayerReturn {
   isPlaying: boolean;
@@ -19,6 +20,7 @@ interface UseFortyDayAudioPlayerReturn {
   rewind: () => Promise<void>;
   forward: () => Promise<void>;
   loadAudio: (uri: string) => Promise<void>;
+  loadAndPlay: (uri: string) => Promise<void>;
   unloadAudio: () => Promise<void>;
 }
 
@@ -102,7 +104,10 @@ export function useFortyDayAudioPlayer(): UseFortyDayAudioPlayerReturn {
         setIsPlaying(false);
       }
 
-      const audioSource: AudioSource = { uri };
+      // Get cached audio URI (downloads if not cached)
+      const cachedUri = await audioCacheService.getAudioUri(uri);
+      
+      const audioSource: AudioSource = { uri: cachedUri };
       await player.replace(audioSource);
 
       // Wait for duration to be available
@@ -126,6 +131,69 @@ export function useFortyDayAudioPlayer(): UseFortyDayAudioPlayerReturn {
       setCurrentUri(uri);
     } catch (error) {
       console.error('Error loading audio in FortyDay screen:', error);
+      setCurrentUri(null);
+      setIsPlaying(false);
+      setCurrentTime('00:00');
+      setTotalTime('--:--');
+      setProgress(0);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadAndPlay = async (uri: string) => {
+    try {
+      if (!uri || uri.trim() === '') {
+        return;
+      }
+
+      // If same audio is already loaded, just play it
+      if (currentUri === uri) {
+        if (!player.playing) {
+          await player.play();
+          setIsPlaying(true);
+        }
+        return;
+      }
+
+      setIsLoading(true);
+      setIsPlaying(false);
+
+      if (player.playing) {
+        player.pause();
+      }
+
+      // Get cached audio URI (downloads if not cached)
+      const cachedUri = await audioCacheService.getAudioUri(uri);
+      
+      const audioSource: AudioSource = { uri: cachedUri };
+      await player.replace(audioSource);
+
+      // Wait for duration to be available
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds max
+      while ((!isFinite(player.duration) || player.duration === 0) && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+
+      setIsMuted(false);
+      previousVolumeRef.current = 1.0;
+      player.volume = 1.0;
+
+      // Initialize time values
+      const durationMs = player.duration * 1000;
+      setCurrentTime('00:00');
+      setTotalTime(isFinite(player.duration) && player.duration > 0 ? formatTime(durationMs) : '--:--');
+      setProgress(0);
+
+      setCurrentUri(uri);
+      
+      // Play immediately after loading - don't wait for state update
+      await player.play();
+      setIsPlaying(true);
+    } catch (error) {
+      console.error('Error loading and playing audio in FortyDay screen:', error);
       setCurrentUri(null);
       setIsPlaying(false);
       setCurrentTime('00:00');
@@ -318,6 +386,7 @@ export function useFortyDayAudioPlayer(): UseFortyDayAudioPlayerReturn {
     rewind,
     forward,
     loadAudio,
+    loadAndPlay,
     unloadAudio,
   };
 }

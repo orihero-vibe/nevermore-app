@@ -72,7 +72,7 @@ export default function TemptationDetails() {
   
   // Extract categoryId from content if not provided in route params
   const extractedCategoryId = React.useMemo(() => {
-    if (routeCategoryId) return routeCategoryId;
+    if (routeCategoryId && routeCategoryId.length > 0) return routeCategoryId;
     if (initialContent) {
       return getContentCategoryId(initialContent);
     }
@@ -96,10 +96,14 @@ export default function TemptationDetails() {
     loading: roleBasedLoading 
   } = useContentByCategoryAndRole(extractedCategoryId || null, activeButton);
   
+  // Keep showing initial content if no role-based content exists for the selected role
   const content = extractedCategoryId 
-    ? (roleBasedContent && roleBasedContent.length > 0 ? roleBasedContent[0] : null)
+    ? (roleBasedContent && roleBasedContent.length > 0 ? roleBasedContent[0] : initialContent)
     : initialContent;
   const loading = extractedCategoryId ? roleBasedLoading : initialLoading;
+  
+  // Check if current role has no content (for showing message)
+  const noContentForRole = extractedCategoryId && !roleBasedLoading && roleBasedContent?.length === 0;
   
   const scrollY = useSharedValue(0);
   
@@ -267,6 +271,14 @@ export default function TemptationDetails() {
           </Animated.View>
         )}
 
+        {noContentForRole && (
+          <View style={styles.noContentMessage}>
+            <Text style={styles.noContentText}>
+              No {activeButton === 'recovery' ? 'Recovery' : 'Support'} content available for this category.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.mainTitleContainer}>
           <Text style={styles.mainTitle}>{content.title}</Text>
           <TouchableOpacity style={styles.bookmarkButton} onPress={handleBookmarkToggle}>
@@ -374,6 +386,21 @@ const styles = StyleSheet.create({
     color: '#8B5CF6',
     fontSize: 16,
     fontFamily: 'Roboto_400Regular',
+  },
+  noContentMessage: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+  },
+  noContentText: {
+    color: '#A78BFA',
+    fontSize: 14,
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
   },
   headerBackground: {
     position: 'absolute',

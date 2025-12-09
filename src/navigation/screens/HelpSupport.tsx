@@ -10,11 +10,18 @@ import {
   ImageBackground,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supportService, SupportReason } from '../../services/support.service';
 import { useUserProfile } from '../../hooks/useUserProfile';
+import { ScreenNames } from '../../constants/ScreenNames';
+
+type HelpSupportRouteParams = {
+  [ScreenNames.HELP_SUPPORT]: {
+    preSelectedReason?: string;
+  } | undefined;
+};
 
 interface RadioButtonProps {
   label: string;
@@ -56,8 +63,10 @@ const REASONS = [
 
 export const HelpSupport: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<HelpSupportRouteParams, typeof ScreenNames.HELP_SUPPORT>>();
   const { profile } = useUserProfile();
-  const [selectedReason, setSelectedReason] = useState<string>('Feedback');
+  const preSelectedReason = route.params?.preSelectedReason;
+  const [selectedReason, setSelectedReason] = useState<string>(preSelectedReason || 'Feedback');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const maxCharacters = 5000;
