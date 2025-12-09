@@ -16,7 +16,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nevermore.app",
-      "buildNumber": "5"
+      "buildNumber": "7",
+      "appleTeamId": "C5DF3CP9LJ"
     },
     "android": {
       "adaptiveIcon": {
@@ -62,7 +63,8 @@
         {
           "backgroundColor": "#2D1B69"
         }
-      ]
+      ],
+      "expo-audio"
     ]
   }
 }
