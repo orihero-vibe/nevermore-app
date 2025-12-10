@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nevermore.app",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "appleTeamId": "C5DF3CP9LJ"
     },
     "android": {
@@ -61,6 +61,7 @@
       [
         "expo-splash-screen",
         {
+          "image": "./src/assets/App_Icon.png",
           "backgroundColor": "#2D1B69"
         }
       ],
