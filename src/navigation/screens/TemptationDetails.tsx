@@ -115,7 +115,14 @@ export default function TemptationDetails() {
   
   const { headerAnimatedStyle, canvasAnimatedStyle, contentAnimatedStyle } = useEntranceAnimations();
   const { selectedAudioIndex, audioPlayer, handleAudioSelect, loadPlaylist } = useAudioPlaylist();
-  const { transcript, displayImage, audioFiles } = useContentPresentation(content);
+  const { transcripts, images, displayImage, audioFiles } = useContentPresentation(content);
+  
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Reset image index when content changes
+  React.useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [content?.$id]);
   
   const headerBackgroundStyle = useAnimatedStyle(() => {
     const backgroundColorOpacity = interpolate(
@@ -133,32 +140,67 @@ export default function TemptationDetails() {
   const { toggleBookmark, isBookmarked } = useBookmarkStore();
   const isCurrentlyBookmarked = content ? isBookmarked(content.$id) : false;
 
-  const transcriptFileUrl = transcript || null;
-  
-  const [transcriptFileName, setTranscriptFileName] = useState<string>('Transcript');
+  const [transcriptFileNames, setTranscriptFileNames] = useState<Record<number, string>>({});
+
+  const truncateFileName = React.useCallback((fileName: string, maxLength: number = 35): string => {
+    if (fileName.length <= maxLength) {
+      return fileName;
+    }
+    
+    // Extract extension if present
+    const lastDotIndex = fileName.lastIndexOf('.');
+    const hasExtension = lastDotIndex > 0;
+    const extension = hasExtension ? fileName.substring(lastDotIndex) : '';
+    const nameWithoutExt = hasExtension ? fileName.substring(0, lastDotIndex) : fileName;
+    
+    // Calculate how many characters we can show (accounting for ".." and extension)
+    const availableLength = maxLength - extension.length - 2; // 2 for ".."
+    
+    if (nameWithoutExt.length <= availableLength) {
+      return fileName;
+    }
+    
+    // Show first part + ".." + last part + extension
+    const firstPartLength = Math.floor(availableLength / 2);
+    const lastPartLength = availableLength - firstPartLength;
+    const firstPart = nameWithoutExt.substring(0, firstPartLength);
+    const lastPart = nameWithoutExt.substring(nameWithoutExt.length - lastPartLength);
+    
+    return `${firstPart}..${lastPart}${extension}`;
+  }, []);
 
   React.useEffect(() => {
-    if (transcriptFileUrl) {
-      storageService.getFileName(transcriptFileUrl)
-        .then(setTranscriptFileName)
-        .catch(() => {
-          setTranscriptFileName('Transcript');
-        });
+    if (transcripts.length > 0) {
+      const fetchFileNames = async () => {
+        const names: Record<number, string> = {};
+        await Promise.all(
+          transcripts.map(async (transcriptUrl, index) => {
+            try {
+              const fileName = await storageService.getFileName(transcriptUrl);
+              names[index] = fileName;
+            } catch {
+              names[index] = `Transcript ${index + 1}`;
+            }
+          })
+        );
+        setTranscriptFileNames(names);
+      };
+      fetchFileNames();
     }
-  }, [transcriptFileUrl]);
+  }, [transcripts]);
 
-  const handleTranscriptDownload = React.useCallback(async () => {
-    if (!transcriptFileUrl) {
+  const handleTranscriptDownload = React.useCallback(async (transcriptUrl: string) => {
+    if (!transcriptUrl) {
       Alert.alert('No File', 'No transcript file available for download.');
       return;
     }
 
     try {
-      await storageService.downloadFile(transcriptFileUrl);
+      await storageService.downloadFile(transcriptUrl);
     } catch (error) {
       console.error('Failed to download transcript file:', error);
     }
-  }, [transcriptFileUrl]);
+  }, []);
 
   const audioFilesRef = React.useRef<string[]>([]);
   React.useEffect(() => {
@@ -283,9 +325,9 @@ export default function TemptationDetails() {
           <Text style={styles.mainTitle}>{content.title}</Text>
           <TouchableOpacity style={styles.bookmarkButton} onPress={handleBookmarkToggle}>
             {isCurrentlyBookmarked ? (
-              <BookmarkActiveIcon width={20} height={24} color="#965CDF" />
+              <BookmarkActiveIcon width={18} height={20} color="#965CDF" />
             ) : (
-              <BookmarkIcon width={20} height={24} />
+              <BookmarkIcon width={18} height={20} />
             )}
           </TouchableOpacity>
         </View>
@@ -303,33 +345,69 @@ export default function TemptationDetails() {
           onSeek={audioPlayer.seekTo}
         />
 
-        {displayImage && (
+        {images.length > 0 && (
           <View style={styles.imageContainer}>
-            <Image source={{ uri: displayImage }} style={styles.imagePlaceholder} />
+            <FlatList
+              data={images}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item, index) => index.toString()}
+              onMomentumScrollEnd={(event) => {
+                const imageWidth = width - 40; // Account for padding (20px each side)
+                const index = Math.round(event.nativeEvent.contentOffset.x / imageWidth);
+                setCurrentImageIndex(index);
+              }}
+              renderItem={({ item }) => (
+                <Image source={{ uri: item }} style={styles.imagePlaceholder} />
+              )}
+              contentContainerStyle={styles.imageListContainer}
+            />
+            {images.length > 1 && (
+              <View style={styles.paginationContainer}>
+                {images.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      index === currentImageIndex && styles.paginationDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         )}
 
-        {transcript && (
+        {transcripts.length > 0 && (
           <View style={styles.transcriptSection}>
             <View style={styles.transcriptHeader}>
-              <Text style={styles.sectionTitle}>Transcript</Text>
+              <Text style={styles.sectionTitle}>Transcripts</Text>
             </View>
-            <TouchableOpacity 
-              style={styles.transcriptActions} 
-              onPress={handleTranscriptDownload}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.transcriptText} numberOfLines={4}>
-                {transcriptFileName}
-              </Text>
-              <TouchableOpacity 
-                style={styles.downloadButton} 
-                onPress={handleTranscriptDownload}
-                activeOpacity={0.7}
-              >
-                <DocumentIcon color="#8B5CF6" />
-              </TouchableOpacity>
-            </TouchableOpacity>
+            <FlatList
+              data={transcripts}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item: transcriptUrl, index }) => (
+                <TouchableOpacity 
+                  style={styles.transcriptActions} 
+                  onPress={() => handleTranscriptDownload(transcriptUrl)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.transcriptText} numberOfLines={1}>
+                    {truncateFileName(transcriptFileNames[index] || `Transcript ${index + 1}`)}
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.downloadButton} 
+                    onPress={() => handleTranscriptDownload(transcriptUrl)}
+                    activeOpacity={0.7}
+                  >
+                    <DocumentIcon color="#8B5CF6" />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={styles.transcriptContainer}
+              scrollEnabled={false}
+            />
           </View>
         )}
 
@@ -344,6 +422,7 @@ export default function TemptationDetails() {
                   isPlaying={index === selectedAudioIndex && audioPlayer.isPlaying}
                   isLoading={index === selectedAudioIndex && audioPlayer.isLoading}
                   onPress={() => handleAudioSelect(index)}
+                  questionNumber={index + 1}
                 />
               )}
               contentContainerStyle={styles.reflectionContainer}
@@ -465,13 +544,35 @@ const styles = StyleSheet.create({
   imageContainer: {
     marginBottom: 20,
     paddingHorizontal: 20,
+    position: 'relative',
+  },
+  imageListContainer: {
+    paddingHorizontal: 0,
   },
   imagePlaceholder: {
-    width: '100%',
+    width: Dimensions.get('window').width - 40,
     height: 200,
     resizeMode: 'cover',
     backgroundColor: '#1A1A1A',
     borderRadius: 16,
+    marginRight: 0,
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  paginationDotActive: {
+    backgroundColor: '#8B5CF6',
+    width: 24,
   },
   transcriptSection: {
     marginBottom: 30,
@@ -481,6 +582,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  transcriptContainer: {
+    marginTop: 0,
   },
   transcriptActions: {
     flexDirection: 'row',

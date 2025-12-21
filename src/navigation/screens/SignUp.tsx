@@ -37,6 +37,12 @@ export function SignUp() {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const isEmailValid = validateEmail(email);
   const requirements = validatePasswordRequirements(password, confirmPassword);
 
   const handleSignUp = async () => {
@@ -57,10 +63,6 @@ export function SignUp() {
         },
       }
     );
-  };
-
-  const handleSignIn = () => {
-    navigateToSignIn();
   };
 
   const handleTermsPress = () => {
@@ -95,7 +97,7 @@ export function SignUp() {
 
               <View style={styles.content}>
                 <Text style={styles.title}>CREATE YOUR ACCOUNT</Text>
-                <Text style={styles.subtitle}>Enter your information below</Text>
+                <Text style={styles.subtitle}>Enter your information below.</Text>
 
                 <Input
                   label="Email"
@@ -118,7 +120,6 @@ export function SignUp() {
                   onTogglePassword={() => setShowPassword(!showPassword)}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  textContentType="newPassword"
                 />
 
                 <PasswordInput
@@ -130,46 +131,47 @@ export function SignUp() {
                   onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  textContentType="newPassword"
                 />
 
-                <View style={styles.requirementsContainer}>
-                  <View style={styles.requirementItem}>
-                    {requirements.capital ? <CheckIcon stroke="#8b5cf6" /> : <CheckIcon stroke="#666" />}
-                    <Text style={[styles.requirementText, requirements.capital && styles.requirementTextChecked]}>
-                      At least 1 capital letter
-                    </Text>
-                  </View>
+                {isEmailValid && (
+                  <View style={styles.requirementsContainer}>
+                    <View style={styles.requirementItem}>
+                      {requirements.capital ? <CheckIcon stroke="#8b5cf6" /> : <View style={styles.dotIcon} />}
+                      <Text style={[styles.requirementText, requirements.capital && styles.requirementTextChecked]}>
+                        At least 1 capital letter
+                      </Text>
+                    </View>
 
-                  <View style={styles.requirementItem}>
-                    {requirements.numerical ? <CheckIcon stroke="#8b5cf6" /> : <CheckIcon stroke="#666" />}
-                    <Text style={[styles.requirementText, requirements.numerical && styles.requirementTextChecked]}>
-                      At least 1 numerical value
-                    </Text>
-                  </View>
+                    <View style={styles.requirementItem}>
+                      {requirements.numerical ? <CheckIcon stroke="#8b5cf6" /> : <View style={styles.dotIcon} />}
+                      <Text style={[styles.requirementText, requirements.numerical && styles.requirementTextChecked]}>
+                        At least 1 numerical value
+                      </Text>
+                    </View>
 
-                  <View style={styles.requirementItem}>
-                    {requirements.special ? <CheckIcon stroke="#8b5cf6" /> : <CheckIcon stroke="#666" />}
-                    <Text style={[styles.requirementText, requirements.special && styles.requirementTextChecked]}>
-                      At least 1 special character
-                    </Text>
-                  </View>
+                    <View style={styles.requirementItem}>
+                      {requirements.special ? <CheckIcon stroke="#8b5cf6" /> : <View style={styles.dotIcon} />}
+                      <Text style={[styles.requirementText, requirements.special && styles.requirementTextChecked]}>
+                        At least 1 special character
+                      </Text>
+                    </View>
 
-                  <View style={styles.requirementItem}>
-                    {requirements.match ? <CheckIcon stroke="#8b5cf6" /> : <CheckIcon stroke="#666" />}
-                    <Text style={[styles.requirementText, requirements.match && styles.requirementTextChecked]}>
-                      Passwords match
-                    </Text>
+                    <View style={styles.requirementItem}>
+                      {requirements.match ? <CheckIcon stroke="#8b5cf6" /> : <View style={styles.dotIcon} />}
+                      <Text style={[styles.requirementText, requirements.match && styles.requirementTextChecked]}>
+                        Passwords match
+                      </Text>
+                    </View>
                   </View>
-                </View>
+                )}
 
                 <TouchableOpacity
-                  style={styles.termsContainer}
+                  style={[styles.termsContainer, {opacity: agreeToTerms ? 1 : 0.6}]}
                   onPress={() => setAgreeToTerms(!agreeToTerms)}
                 >
                   <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
                     {agreeToTerms && (
-                      <CheckIcon />
+                      <CheckIcon color="#ffffff" />
                     )}
                   </View>
                   <View style={styles.termsTextContainer}>
@@ -200,13 +202,6 @@ export function SignUp() {
                   disabled={isLoading || !requirements.capital || !requirements.numerical || !requirements.special || !requirements.match || !agreeToTerms}
                   style={styles.createAccountButton}
                 />
-
-                <View style={styles.signInContainer}>
-                  <Text style={styles.signInText}>Already have an account? </Text>
-                  <TouchableOpacity onPress={handleSignIn}>
-                    <Text style={styles.signInLink}>Sign In</Text>
-                  </TouchableOpacity>
-                </View>
               </View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -269,6 +264,7 @@ const styles = StyleSheet.create({
   },
   requirementsContainer: {
     marginBottom: 24,
+    paddingHorizontal: 20,
   },
   requirementItem: {
     flexDirection: 'row',
@@ -282,26 +278,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto_400Regular',
   },
   requirementTextChecked: {
-    color: '#8b5cf6',
+    color: '#ffffff',
   },
   termsContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 32,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
+    width: 24,
+    height: 24,
+    borderWidth: 1.5,
     borderColor: '#ffffff',
-    borderRadius: 4,
+    borderRadius: 8,
     marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
   checkboxChecked: {
+    backgroundColor: '#8b5cf6',
     borderColor: '#8b5cf6',
+  },
+  dotIcon: {
+    width: 7,
+    height: 7,
+    borderRadius: 5,
+    backgroundColor: '#999',
+    marginRight: 6,
+    marginLeft:2
   },
   termsTextContainer: {
     flex: 1,

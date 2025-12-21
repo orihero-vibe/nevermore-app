@@ -5,6 +5,7 @@ export enum ScreenNames {
   FORGOT_PASSWORD = 'ForgotPassword',
   CREATE_NEW_PASSWORD = 'CreateNewPassword',
   MAGIC_URL_VERIFY = 'MagicURLVerify',
+  VERIFY_EMAIL = 'VerifyEmail',
   PERMISSION = 'Permission',
   PURPOSE = 'Purpose',
   NICKNAME = 'Nickname',

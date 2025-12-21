@@ -15,6 +15,10 @@ export type RootStackParamList = {
     userId?: string;
     secret?: string;
   };
+  [ScreenNames.VERIFY_EMAIL]: {
+    email: string;
+    source?: 'signup' | 'forgot-password';
+  };
   [ScreenNames.PERMISSION]: undefined;
   [ScreenNames.PURPOSE]: undefined;
   [ScreenNames.NICKNAME]: undefined;
@@ -67,6 +71,8 @@ export const useAppNavigation = () => {
     navigateToSignUp: () => navigation.navigate(ScreenNames.SIGN_UP),
     navigateToForgotPassword: () => navigation.navigate(ScreenNames.FORGOT_PASSWORD),
     navigateToCreateNewPassword: () => navigation.navigate(ScreenNames.CREATE_NEW_PASSWORD),
+    navigateToVerifyEmail: (params: { email: string; source?: 'signup' | 'forgot-password' }) => 
+      navigation.navigate(ScreenNames.VERIFY_EMAIL, params),
     navigateToPermission: () => navigation.navigate(ScreenNames.PERMISSION),
     navigateToPurpose: () => navigation.navigate(ScreenNames.PURPOSE),
     navigateToNickname: () => navigation.navigate(ScreenNames.NICKNAME),

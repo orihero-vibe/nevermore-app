@@ -49,10 +49,6 @@ export function SignIn() {
     navigateToForgotPassword();
   };
 
-  const handleSignUp = () => {
-    navigateToSignUp();
-  };
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
@@ -75,7 +71,7 @@ export function SignIn() {
             </View>
 
             <View style={styles.content}>
-              <Text style={styles.title}>SIGN IN</Text>
+              <Text style={styles.title}>Sign In</Text>
 
               <Input
                 label="Email"
@@ -104,12 +100,12 @@ export function SignIn() {
 
               <View style={styles.optionsContainer}>
                 <TouchableOpacity
-                  style={styles.rememberMeContainer}
+                  style={[styles.rememberMeContainer, {opacity: rememberMe ? 1 : 0.5}]}
                   onPress={() => setRememberMe(!rememberMe)}
                 >
                   <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
                     {rememberMe && (
-                      <CheckIcon />
+                      <CheckIcon color="#ffffff" opacity={1} />
                     )}
                   </View>
                   <Text style={styles.rememberMeText}>Remember me</Text>
@@ -125,22 +121,16 @@ export function SignIn() {
                   <Text style={styles.errorText}>{errorMessage}</Text>
                 </View>
               )}
+            </View>
 
+            <View style={styles.buttonContainer}>
               <Button
                 title={isLoading ? "Signing In..." : "Sign In"}
                 onPress={handleSignIn}
                 variant="primary"
                 size="medium"
                 disabled={isLoading}
-                style={styles.signInButton}
               />
-
-              <View style={styles.signUpContainer}>
-                <Text style={styles.signUpText}>Don't have an account? </Text>
-                <TouchableOpacity onPress={handleSignUp}>
-                  <Text style={styles.signUpLink}>Sign Up</Text>
-                </TouchableOpacity>
-              </View>
             </View>
           </KeyboardAvoidingView>
         </SafeAreaView>
@@ -185,6 +175,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 40,
   },
+  buttonContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
   title: {
     fontSize: 32,
     color: '#ffffff',
@@ -202,11 +196,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
+    width: 24,
+    height: 24,
+    borderWidth: 1.5,
     borderColor: '#ffffff',
-    borderRadius: 4,
+    borderRadius: 8,
     marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -238,9 +232,6 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontFamily: 'Roboto_400Regular',
     textAlign: 'center',
-  },
-  signInButton: {
-    marginBottom: 24,
   },
   signUpContainer: {
     flexDirection: 'row',

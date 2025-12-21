@@ -95,17 +95,21 @@ export const useTabSwitcher = ({
 
 
   // Use BackdropFilter for blur effect - Skia supports it on both iOS and Android
+  const containerHeight = 40;
+  const buttonHeight = 32;
+  const verticalPadding = 4;
+  
   const containerElement = (
     <BackdropFilter
       filter={<Blur blur={5} />}
-      clip={rrect({ x: 60, y: y, width: width - 120, height: 50 }, 8, 8)}
+      clip={rrect({ x: 60, y: y, width: width - 120, height: containerHeight }, 8, 8)}
     >
       <Rect
         x={60}
         y={y}
         width={width - 120}
-        height={50}
-        color="rgba(255,255,255,0.1)"
+        height={containerHeight}
+        color="rgba(255,255,255,0.07)"
       />
     </BackdropFilter>
   );
@@ -115,16 +119,16 @@ export const useTabSwitcher = ({
       filter={<Blur blur={5} />}
       clip={rrect({ 
         x: skiaIndicatorPosition, 
-        y: y + 5, 
+        y: y + verticalPadding, 
         width: tabWidth, 
-        height: 40 
+        height: buttonHeight 
       }, 6, 6)}
     >
       <Rect
         x={skiaIndicatorPosition}
-        y={y + 5}
+        y={y + verticalPadding}
         width={tabWidth}
-        height={40}
+        height={buttonHeight}
         color="#8B5CF6"
       />
     </BackdropFilter>
@@ -132,11 +136,12 @@ export const useTabSwitcher = ({
 
   const textElements = tabs.map((tab, index) => {
     const tabX = getTabPosition(index) + tabWidth / 2 - (cardFont?.getTextWidth(tab) || 0) / 2;
+    const textY = y + verticalPadding + buttonHeight / 2 + (cardFont?.getSize() || 16) / 3;
     return (
       <SkiaText
         key={tab}
         x={tabX}
-        y={y + 30}
+        y={textY}
         text={tab}
         font={cardFont}
         color="white"
@@ -153,13 +158,13 @@ export const useTabSwitcher = ({
           {
             position: 'absolute',
             width: tabWidth,
-            height: 40,
+            height: buttonHeight,
             borderRadius: 6,
             zIndex: 10,
           },
           {
             left: tabX,
-            top: y + 5,
+            top: y + verticalPadding,
           }
         ]}
         onPress={() => onTabChange(tab)}

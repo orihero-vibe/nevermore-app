@@ -36,7 +36,7 @@ export interface Content {
   role?: string;
   category?: string | Category;
   type: string;
-  transcript?: string;
+  transcripts?: string[];
   images?: string[];
   files?: string[];
   tasks?: string[];

@@ -96,6 +96,7 @@ export function Nickname() {
             size="medium"
             disabled={isLoading}
             style={styles.skipButton}
+            textStyle={styles.skipButtonText}
           />
         </View>
       </SafeAreaView>
@@ -154,5 +155,8 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     alignItems: 'center',
+  },
+  skipButtonText: {
+    color: '#8b5cf6',
   },
 });

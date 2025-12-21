@@ -5,11 +5,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  ImageBackground,
   ScrollView,
+  Dimensions,
+  ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import {
+  Canvas,
+  Image as SkiaImage,
+  useImage
+} from '@shopify/react-native-skia';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import CheckmarkIcon from '../../assets/icons/checkmark';
 import { Button } from '../../components/Button';
@@ -21,6 +27,8 @@ type PlanType = 'monthly' | 'plan2';
 export function Subscription() {
   const navigation = useNavigation();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
+  const width = Dimensions.get('window').width;
+  const bg = useImage(require('../../assets/gradient.png'));
 
   const handleSubscribe = () => {
     // TODO: Handle subscription logic
@@ -46,49 +54,59 @@ export function Subscription() {
     title: string,
     price: string,
     isSelected: boolean
-  ) => (
-    <TouchableOpacity
-      style={[styles.planCard, isSelected && styles.selectedPlanCard]}
-      onPress={() => setSelectedPlan(planType)}
-    >
-      <View style={styles.planHeader}>
-        <Text style={styles.planTitle}>{title}</Text>
-      </View>
-      
-      <View style={styles.planContent}>
-        {benefits.map((benefit, index) => (
-          <View key={index} style={styles.benefitRow}>
-            <CheckmarkIcon width={16} height={16} color="#8B5CF6" />
-            <Text style={styles.benefitText}>{benefit}</Text>
-          </View>
-        ))}
+  ) => {
+    const planLabel = planType === 'monthly' ? 'Monthly' : 'Plan 2';
+    
+    return (
+      <TouchableOpacity
+        style={[styles.planCard]}
+        onPress={() => setSelectedPlan(planType)}
+      >
+        <ImageBackground
+          source={require('../../assets/card-bg.png')}
+          style={styles.planHeader}
+          imageStyle={styles.planHeaderImage}
+        >
+          <Text style={styles.planTitle}>{title}</Text>
+        </ImageBackground>
         
-        <View style={styles.planFooter}>
-          <View style={styles.planSelection}>
-            <View style={[styles.radioButton, isSelected && styles.selectedRadioButton]}>
-              {isSelected && <View style={styles.radioButtonInner} />}
+        <View style={styles.planContent}>
+          <View style={styles.benefitsContainer}>
+          {benefits.map((benefit, index) => (
+            <View key={index} style={styles.benefitRow}>
+              <CheckmarkIcon width={16} height={16} color="#8B5CF6" />
+              <Text style={styles.benefitText}>{benefit}</Text>
             </View>
-            <Text style={styles.planLabel}>Monthly</Text>
+          ))}
           </View>
           
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>{price}</Text>
-            <Text style={styles.priceUnit}>per month</Text>
+          <View style={styles.planFooter}>
+            <View style={styles.planSelection}>
+              <View style={[styles.radioButton]}>
+                {isSelected && <View style={styles.radioButtonInner} />}
+              </View>
+              <Text style={styles.planLabel}>{planLabel}</Text>
+            </View>
+            
+            <View style={styles.priceContainer}>
+              <Text style={styles.price}>{price}</Text>
+              <Text style={styles.priceUnit}>per month</Text>
+            </View>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <ImageBackground
-        source={require('../../assets/splash-bg.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={styles.safeArea}>
+      <View style={styles.backgroundContainer}>
+        <Canvas style={styles.backgroundCanvas}>
+          <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
+        </Canvas>
+      </View>
+      <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -134,7 +152,6 @@ export function Subscription() {
             />
           </View>
         </SafeAreaView>
-      </ImageBackground>
     </View>
   );
 }
@@ -144,13 +161,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+    zIndex: 0,
+  },
+  backgroundCanvas: {
+    height: 300,
   },
   safeArea: {
     flex: 1,
+    zIndex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -172,14 +196,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingTop: 24,
+    paddingBottom: 24,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     color: '#ffffff',
     marginBottom: 16,
-    fontFamily: 'Cinzel_600SemiBold',
+    fontFamily: 'Cinzel_400Regular',
     textAlign: 'left',
   },
   description: {
@@ -193,30 +217,41 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   planCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
+    backgroundColor: '#000000',
+    borderRadius: 20,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#333333',
   },
-  selectedPlanCard: {
-    borderColor: '#8B5CF6',
-  },
   planHeader: {
     backgroundColor: '#8B5CF6',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    paddingVertical: 12,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingVertical: 24,
     paddingHorizontal: 16,
+    overflow: 'hidden',
+  },
+  planHeaderImage: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    resizeMode: 'cover',
+    transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }],
   },
   planTitle: {
     fontSize: 16,
     color: '#ffffff',
     fontFamily: 'Cinzel_600SemiBold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     textAlign: 'center',
   },
   planContent: {
-    padding: 16,
+    paddingHorizontal: 4,
+    paddingVertical: 4, 
+  },
+  benefitsContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   benefitRow: {
     flexDirection: 'row',
@@ -233,27 +268,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#333333',
+    marginTop: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
   },
   planSelection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#666666',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#777777',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
-  },
-  selectedRadioButton: {
-    borderColor: '#8B5CF6',
   },
   radioButtonInner: {
     width: 10,
@@ -270,14 +303,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   price: {
-    fontSize: 24,
+    fontSize: 18,
     color: '#ffffff',
-    fontFamily: 'Cinzel_600SemiBold',
+    fontWeight: '700',
   },
   priceUnit: {
-    fontSize: 14,
-    color: '#ffffff',
+    fontSize: 12,
+    color: '#CCCCCC',
     fontFamily: 'Roboto_400Regular',
+    marginTop: 2,
   },
   buttonContainer: {
     paddingHorizontal: 20,

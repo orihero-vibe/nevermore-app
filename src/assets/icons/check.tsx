@@ -17,4 +17,5 @@ const CheckIcon = (props: SvgProps) => (
     />
   </Svg>
 )
+    
 export default CheckIcon

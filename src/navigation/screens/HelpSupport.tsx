@@ -7,11 +7,17 @@ import {
   ScrollView,
   TextInput,
   Alert,
-  ImageBackground,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import {
+  Canvas,
+  Image as SkiaImage,
+  useImage,
+} from '@shopify/react-native-skia';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
+import CheckIcon from '../../assets/icons/check';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supportService, SupportReason } from '../../services/support.service';
 import { useUserProfile } from '../../hooks/useUserProfile';
@@ -23,23 +29,25 @@ type HelpSupportRouteParams = {
   } | undefined;
 };
 
-interface RadioButtonProps {
+interface CheckboxProps {
   label: string;
   checked: boolean;
   onToggle: () => void;
 }
 
-const RadioButton: React.FC<RadioButtonProps> = ({ label, checked, onToggle }) => {
+const Checkbox: React.FC<CheckboxProps> = ({ label, checked, onToggle }) => {
   return (
     <TouchableOpacity
-      style={styles.radioContainer}
+      style={styles.checkboxContainer}
       onPress={onToggle}
       activeOpacity={0.7}
     >
-      <View style={[styles.radioButton, checked && styles.radioButtonChecked]}>
-        {checked && <View style={styles.radioButtonInner} />}
+      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+        {checked && <CheckIcon width={15} height={11} color="#FFFFFF" />}
       </View>
-      <Text style={styles.radioLabel}>{label}</Text>
+      <Text style={[styles.checkboxLabel, !checked && styles.checkboxLabelUnselected]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 };
@@ -69,7 +77,10 @@ export const HelpSupport: React.FC = () => {
   const [selectedReason, setSelectedReason] = useState<string>(preSelectedReason || 'Feedback');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const maxCharacters = 5000;
+  const maxCharacters = 1000;
+
+  const width = Dimensions.get('window').width;
+  const bg = useImage(require('../../assets/gradient.png'));
 
   const selectReason = (reason: string) => {
     setSelectedReason(reason);
@@ -122,13 +133,14 @@ export const HelpSupport: React.FC = () => {
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/gradient.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.container}>
-        
+    <View style={styles.container}>
+      <View style={styles.backgroundContainer}>
+        <Canvas style={styles.backgroundCanvas}>
+          <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
+        </Canvas>
+      </View>
+
+      <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -151,11 +163,11 @@ export const HelpSupport: React.FC = () => {
           <Text style={styles.pageTitle}>How Can We Help You?</Text>
 
           {/* Select reason section */}
-          <Text style={styles.sectionLabel}>Select reason:</Text>
+          <Text style={styles.sectionLabel}>Select reason(s):</Text>
           
-          <View style={styles.radioList}>
+          <View style={styles.checkboxList}>
             {REASONS.map((reason) => (
-              <RadioButton
+              <Checkbox
                 key={reason}
                 label={reason}
                 checked={selectedReason === reason}
@@ -210,18 +222,27 @@ export const HelpSupport: React.FC = () => {
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#131313',
-  },
   container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+    zIndex: 0,
+  },
+  backgroundCanvas: {
+    height: 300,
+  },
+  safeArea: {
     flex: 1,
     backgroundColor: 'transparent',
   },
@@ -266,18 +287,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontFamily: 'Roboto_400Regular',
   },
-  radioList: {
+  checkboxList: {
     marginBottom: 24,
   },
-  radioContainer: {
+  checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
-  radioButton: {
+  checkbox: {
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
     backgroundColor: 'transparent',
@@ -285,19 +306,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioButtonChecked: {
+  checkboxChecked: {
+    backgroundColor: '#8B5CF6',
     borderColor: '#8B5CF6',
   },
-  radioButtonInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#8B5CF6',
-  },
-  radioLabel: {
+  checkboxLabel: {
     fontSize: 16,
     color: '#ffffff',
     fontFamily: 'Roboto_400Regular',
+  },
+  checkboxLabelUnselected: {
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   description: {
     fontSize: 14,

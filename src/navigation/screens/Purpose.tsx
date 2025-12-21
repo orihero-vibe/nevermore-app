@@ -92,7 +92,7 @@ export function Purpose() {
                 <Text style={styles.cardText}>I AM HERE TO{'\n'}SEEK HELP</Text>
                 {selectedPurpose === 'seek-help' && (
                   <View style={styles.checkmarkContainer}>
-                    <CheckIcon />
+                    <CheckIcon color="#000000" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -113,7 +113,7 @@ export function Purpose() {
                 <Text style={styles.cardText}>I AM HERE TO{'\n'}HELP SOMEONE</Text>
                 {selectedPurpose === 'help-someone' && (
                   <View style={styles.checkmarkContainer}>
-                    <CheckIcon />
+                    <CheckIcon color="#000000" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#8b5cf6',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,

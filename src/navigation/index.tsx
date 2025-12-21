@@ -13,6 +13,7 @@ import { SignUp } from './screens/SignUp';
 import { ForgotPassword } from './screens/ForgotPassword';
 import { CreateNewPassword } from './screens/CreateNewPassword';
 import { MagicURLVerify } from './screens/MagicURLVerify';
+import { VerifyEmail } from './screens/VerifyEmail';
 import { Permission } from './screens/Permission';
 import { Purpose } from './screens/Purpose';
 import { Nickname } from './screens/Nickname';
@@ -189,6 +190,13 @@ function RootStack({ initialRouteName }: { initialRouteName: string }) {
         component={MagicURLVerify}
         options={{
           title: 'Verify Magic URL',
+        }}
+      />
+      <Stack.Screen
+        name={ScreenNames.VERIFY_EMAIL}
+        component={VerifyEmail}
+        options={{
+          title: 'Verify Email',
         }}
       />
       <Stack.Screen

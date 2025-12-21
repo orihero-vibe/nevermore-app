@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Content } from '../services/content.service';
 
 interface UseContentPresentationReturn {
-  transcript: string;
+  transcripts: string[];
   images: string[];
   displayImage: string;
   audioFiles: string[];
@@ -24,7 +24,7 @@ export function useContentPresentation(content: Content | null): UseContentPrese
   return useMemo(() => {
     if (!content) {
       return {
-        transcript: '',
+        transcripts: [],
         images: [],
         displayImage: DEFAULT_IMAGE,
         audioFiles: [],
@@ -34,18 +34,18 @@ export function useContentPresentation(content: Content | null): UseContentPrese
       };
     }
 
-    const transcript = content.transcript || '';
+    const transcripts = content.transcripts || [];
     const images = content.images || [];
     const displayImage = images.length > 0 ? images[0] : DEFAULT_IMAGE;
     const audioFiles = content.files || [];
 
     return {
-      transcript,
+      transcripts,
       images,
       displayImage,
       audioFiles,
       hasAudio: audioFiles.length > 0,
-      hasTranscript: !!transcript,
+      hasTranscript: transcripts.length > 0,
       hasImages: images.length > 0,
     };
   }, [content]);

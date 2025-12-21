@@ -9,7 +9,7 @@ export interface Content {
   role?: string;
   category?: string | { $id: string; name?: string; title?: string; label?: string; [key: string]: unknown };
   type: string;
-  transcript?: string;
+  transcripts?: string[];
   images?: string[];
   files?: string[];
   tasks?: string[];

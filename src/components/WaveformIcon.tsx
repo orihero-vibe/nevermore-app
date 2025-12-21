@@ -15,7 +15,7 @@ export const WaveformIcon: React.FC<WaveformIconProps> = ({
   isActive = false,
   isPlaying = false
 }) => {
-  const waveformColor = isActive ? '#8B5CF6' : '#FFFFFF';
+  const waveformColor ='#FFFFFF';
   
   // Create static heights for consistency
   const staticHeights = React.useMemo(

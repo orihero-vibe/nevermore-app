@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { Button } from '../../components/Button';
 import { ScreenNames } from '../../constants/ScreenNames';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function Welcome() {
   const navigation = useNavigation();
+  const inset = useSafeAreaInsets();
   
   const [cinzelFontsLoaded] = useFonts({
     Cinzel_400Regular,
@@ -40,7 +42,7 @@ export function Welcome() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: inset.bottom }]}>
       <StatusBar barStyle="light-content" backgroundColor="#2D1B69" />
       <ImageBackground
         source={require('../../assets/splash-bg.png')}
@@ -112,7 +114,7 @@ const styles = StyleSheet.create({
   },
   createAccountButton: {
     marginBottom: 24,
-    minWidth: 200,
+    width: '100%',
   },
   signInContainer: {
     alignItems: 'center',
@@ -126,6 +128,5 @@ const styles = StyleSheet.create({
   signInLink: {
     fontFamily: 'Roboto_500Medium',
     color: '#8A2BE2',
-    textDecorationLine: 'underline',
   },
 });

@@ -6,7 +6,7 @@ import {
   StyleSheet,
   TextInputProps,
 } from 'react-native';
-import CheckIcon from '../assets/icons/check';
+import CheckGreenIcon from '../assets/icons/check-green';
 import InfoIcon from '../assets/icons/info';
 
 export type InputState = 'default' | 'error' | 'success';
@@ -76,13 +76,13 @@ export const Input: React.FC<InputProps> = ({
       case 'error':
         return (
           <View style={styles.errorIcon}>
-            <InfoIcon width={12} height={12} color="#ffffff" />
+            <InfoIcon width={20} height={20} color="#ff4444" />
           </View>
         );
       case 'success':
         return (
           <View style={styles.successIcon}>
-            <CheckIcon />
+            <CheckGreenIcon />
           </View>
         );
       default:
@@ -151,25 +151,9 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   errorIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#ff4444',
-    borderWidth: 1,
-    borderColor: '#ff4444',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 16,
   },
   successIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#00ff88',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 16,
   },
   errorMessage: {
