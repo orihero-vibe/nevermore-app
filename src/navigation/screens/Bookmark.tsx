@@ -202,11 +202,14 @@ export function Bookmark() {
           }}
         >
           <Canvas style={styles.canvas}>
+            {/* Background image rendered first so BackdropFilter can blur it */}
+            <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
+            
             <SkiaText
-              text="BOOKMARK"
+              text="Bookmark"
               font={headerText}
               color="white"
-              x={headerText ? width / 2 - (headerText.getTextWidth("BOOKMARK") / 2) : width / 2 - 100}
+              x={headerText ? width / 2 - (headerText.getTextWidth("Bookmark") / 2) : width / 2 - 100}
               y={150}
             />
 
