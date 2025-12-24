@@ -20,6 +20,7 @@ import { SecondaryButton } from '../../components/SecondaryButton';
 import { Input } from '../../components/Input';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { useNickname } from '../../hooks/useNickname';
+import { useOnboardingStore } from '../../store/onboardingStore';
 
 export function Nickname() {
   const navigation = useNavigation();
@@ -33,6 +34,7 @@ export function Nickname() {
     skipNickname,
     isNextEnabled,
   } = useNickname();
+  const { setCurrentStep } = useOnboardingStore();
   
   const width = Dimensions.get('window').width;
   const height = Dimensions.get('window').height;
@@ -42,11 +44,13 @@ export function Nickname() {
 
   const handleNext = async () => {
     await saveNickname();
+    setCurrentStep(ScreenNames.INVITE);
     (navigation as any).navigate(ScreenNames.INVITE);
   };
 
   const handleSkip = async () => {
     await skipNickname();
+    setCurrentStep(ScreenNames.INVITE);
     (navigation as any).navigate(ScreenNames.INVITE);
   };
 

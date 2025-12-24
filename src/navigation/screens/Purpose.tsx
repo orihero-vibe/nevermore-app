@@ -21,6 +21,7 @@ import CheckIcon from '../../assets/icons/check';
 import { Button } from '../../components/Button';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { usePurpose } from '../../hooks/usePurpose';
+import { useOnboardingStore } from '../../store/onboardingStore';
 
 type PurposeType = 'seek-help' | 'help-someone';
 
@@ -28,6 +29,7 @@ export function Purpose() {
   const navigation = useNavigation();
   const [selectedPurpose, setSelectedPurpose] = useState<PurposeType | null>(null);
   const { savePurpose } = usePurpose();
+  const { setCurrentStep } = useOnboardingStore();
   
   const width = Dimensions.get('window').width;
   const height = Dimensions.get('window').height;
@@ -39,6 +41,8 @@ export function Purpose() {
         await savePurpose(selectedPurpose);
         console.log('Selected purpose:', selectedPurpose);
         
+        // Save current step before navigating
+        setCurrentStep(ScreenNames.NICKNAME);
         (navigation as any).navigate(ScreenNames.NICKNAME);
       } catch (error) {
         console.error('Error saving purpose:', error);

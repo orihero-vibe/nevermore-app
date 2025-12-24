@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { Content } from '../services/content.service';
 
 interface UseContentPresentationReturn {
-  transcripts: string[];
+  mainContentURL: string | null;
+  transcriptURL: string | null;
   images: string[];
   displayImage: string;
   audioFiles: string[];
@@ -18,13 +19,18 @@ const DEFAULT_IMAGE = 'https://cdn.pixabay.com/photo/2023/10/30/12/36/hospital-8
  * Provides a clean interface for accessing content display properties
  * 
  * @param content - The content object to extract data from
+ * @param role - The selected role ('recovery' | 'support') to determine which URLs to use
  * @returns Formatted presentation data
  */
-export function useContentPresentation(content: Content | null): UseContentPresentationReturn {
+export function useContentPresentation(
+  content: Content | null,
+  role: 'recovery' | 'support' = 'recovery'
+): UseContentPresentationReturn {
   return useMemo(() => {
     if (!content) {
       return {
-        transcripts: [],
+        mainContentURL: null,
+        transcriptURL: null,
         images: [],
         displayImage: DEFAULT_IMAGE,
         audioFiles: [],
@@ -34,20 +40,29 @@ export function useContentPresentation(content: Content | null): UseContentPrese
       };
     }
 
-    const transcripts = content.transcripts || [];
+    // Get role-specific URLs
+    const mainContentURL = role === 'recovery' 
+      ? content.mainContentRecoveryURL || null
+      : content.mainContentSupportURL || null;
+    
+    const transcriptURL = role === 'recovery'
+      ? content.transcriptRecoveryURL || null
+      : content.transcriptSupportURL || null;
+
     const images = content.images || [];
     const displayImage = images.length > 0 ? images[0] : DEFAULT_IMAGE;
     const audioFiles = content.files || [];
 
     return {
-      transcripts,
+      mainContentURL,
+      transcriptURL,
       images,
       displayImage,
       audioFiles,
       hasAudio: audioFiles.length > 0,
-      hasTranscript: transcripts.length > 0,
+      hasTranscript: !!transcriptURL,
       hasImages: images.length > 0,
     };
-  }, [content]);
+  }, [content, role]);
 }
 

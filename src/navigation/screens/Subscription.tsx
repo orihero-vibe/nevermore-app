@@ -21,6 +21,7 @@ import CheckmarkIcon from '../../assets/icons/checkmark';
 import { Button } from '../../components/Button';
 import { SecondaryButton } from '../../components/SecondaryButton';
 import { ScreenNames } from '../../constants/ScreenNames';
+import { useOnboardingStore } from '../../store/onboardingStore';
 
 type PlanType = 'monthly' | 'plan2';
 
@@ -29,16 +30,19 @@ export function Subscription() {
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
+  const { completeOnboarding } = useOnboardingStore();
 
   const handleSubscribe = () => {
     // TODO: Handle subscription logic
     console.log('Subscribing to plan:', selectedPlan);
+    completeOnboarding();
     navigation.navigate(ScreenNames.HOME_TABS);
   };
 
   const handleSkip = () => {
     // TODO: Handle skip logic
     console.log('Skip subscription');
+    completeOnboarding();
     navigation.navigate(ScreenNames.HOME_TABS);
   };
 

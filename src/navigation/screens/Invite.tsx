@@ -29,10 +29,14 @@ import { SecondaryButton } from '../../components/SecondaryButton';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { invitationService } from '../../services/invitation.service';
 import { account } from '../../services/appwrite.config';
+import { userProfileService } from '../../services/userProfile.service';
+import { getCurrentUser } from '../../services/auth.service';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { showAppwriteError, showSuccessNotification } from '../../services/notifications';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useWelcomeQuote } from '../../hooks/useWelcomeQuote';
+import { useOnboardingStore } from '../../store/onboardingStore';
+import { useAuthStore } from '../../store/authStore';
 
 type RootStackParamList = {
   [ScreenNames.INVITE]: {
@@ -45,6 +49,7 @@ type RootStackParamList = {
   [ScreenNames.INVITE_SEND]: undefined;
   [ScreenNames.HOME_TABS]: undefined;
   [ScreenNames.SIGN_UP]: undefined;
+  [ScreenNames.SET_PASSWORD]: undefined;
 };
 
 type InviteRouteProp = RouteProp<RootStackParamList, ScreenNames.INVITE>;
@@ -55,6 +60,8 @@ export function Invite() {
     const route = useRoute<InviteRouteProp>();
     const { navigateToInviteSend, navigateToHomeTabs, navigateToSignUp } = useAppNavigation();
     const { quote, loading: quoteLoading } = useWelcomeQuote();
+    const { setCurrentStep, completeOnboarding } = useOnboardingStore();
+    const { checkAuth } = useAuthStore();
     
     const [isLoading, setIsLoading] = useState(false);
     const [isProcessingInvitation, setIsProcessingInvitation] = useState(false);
@@ -66,23 +73,34 @@ export function Invite() {
     const token = route.params?.token;
     const userId = route.params?.userId;
     const secret = route.params?.secret;
-    const isFromDeepLink = !!(token || userId || secret);
+    const isFromDeepLink = !!(token && userId && secret);
 
     useEffect(() => {
-        if (isFromDeepLink && token) {
+        if (isFromDeepLink) {
             handleInvitationAcceptance();
         }
-    }, [isFromDeepLink, token]);
+    }, [isFromDeepLink]);
 
     const handleInvitationAcceptance = async () => {
-        if (!token) {
-            Alert.alert('Error', 'Invalid invitation link. Missing invitation token.');
+        // Validate that we have all required parameters from the Magic URL
+        if (!token || !userId || !secret) {
+            Alert.alert(
+                'Invalid Invitation Link',
+                'This invitation link is invalid or incomplete. Please request a new invitation.',
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => navigateToSignUp(),
+                    },
+                ]
+            );
             return;
         }
 
         setIsProcessingInvitation(true);
 
         try {
+            // Verify the invitation exists and is valid
             const invitation = await invitationService.getInvitationByToken(token);
             
             if (!invitation) {
@@ -92,7 +110,7 @@ export function Invite() {
                     [
                         {
                             text: 'OK',
-                            onPress: () => navigateToHomeTabs(),
+                            onPress: () => navigateToSignUp(),
                         },
                     ]
                 );
@@ -106,72 +124,118 @@ export function Invite() {
                     [
                         {
                             text: 'OK',
-                            onPress: () => navigateToHomeTabs(),
+                            onPress: () => navigateToSignUp(),
                         },
                     ]
                 );
                 return;
             }
 
-            if (userId && secret) {
-                try {
-                    await account.createSession({
-                        userId,
-                        secret,
-                    });
-                    await invitationService.acceptInvitation(token);
-                    
-                    showSuccessNotification(
-                        'Invitation accepted! Welcome to Nevermore.',
-                        'Success'
-                    );
-                    
-                    navigateToHomeTabs();
-                } catch (sessionError: any) {
-                    try {
-                        await invitationService.acceptInvitation(token);
-                    } catch (acceptError) {
-                    }
-                    
-                    Alert.alert(
-                        'Welcome!',
-                        'Please create an account to continue.',
-                        [
-                            {
-                                text: 'OK',
-                                onPress: () => navigateToSignUp(),
-                            },
-                        ]
-                    );
+            // Create session using Magic URL credentials
+            try {
+                await account.createSession({
+                    userId,
+                    secret,
+                });
+                
+                // Get user after session creation
+                const user = await getCurrentUser();
+                
+                if (!user) {
+                    throw new Error('Failed to retrieve user after session creation');
                 }
-            } else {
+
+                // Update auth store
+                await checkAuth();
+                
+                // Check if this is a new user (created via Magic URL) or existing user
+                // New users created via Magic URL don't have a password set
+                const isNewUser = !user.passwordUpdate || user.passwordUpdate === user.registration;
+                
+                // Create or get user profile
+                let userProfile = null;
+                try {
+                    userProfile = await userProfileService.getUserProfileByAuthId(user.$id);
+                    if (!userProfile) {
+                        // Create user profile with default values
+                        await userProfileService.createUserProfile({
+                            auth_id: user.$id,
+                            full_name: user.name || user.email?.split('@')[0] || '',
+                            nickname: '',
+                            type: 'patient',
+                        });
+                    }
+                } catch (profileError: any) {
+                    // Profile creation/check failed, but session is created - don't block login
+                    console.error('User profile check/create error:', profileError);
+                }
+                
+                // Mark invitation as accepted
+                try {
+                    await invitationService.acceptInvitation(token);
+                    if (user.email) {
+                        await invitationService.acceptInvitationByEmail(user.email);
+                    }
+                } catch (acceptError) {
+                    console.error('Failed to mark invitation as accepted:', acceptError);
+                }
+                
+                showSuccessNotification(
+                    'Invitation accepted! Welcome to Nevermore.',
+                    'Success'
+                );
+                
+                // Route based on user type
+                if (isNewUser) {
+                    // New user - needs to set password and go through onboarding
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: ScreenNames.SET_PASSWORD }],
+                    });
+                } else {
+                    // Existing user - skip password setup, complete onboarding and go home
+                    completeOnboarding();
+                    navigateToHomeTabs();
+                }
+            } catch (sessionError: any) {
+                // Session creation failed - the magic URL may have expired or been used
+                console.error('Session creation error:', sessionError);
+                
                 Alert.alert(
-                    'Welcome!',
-                    'Please create an account to continue.',
+                    'Invitation Link Expired',
+                    'This magic link has expired or has already been used. Please request a new invitation or sign up manually.',
                     [
                         {
-                            text: 'OK',
+                            text: 'Sign Up',
                             onPress: () => navigateToSignUp(),
                         },
                     ]
                 );
             }
         } catch (error: unknown) {
+            console.error('Invitation acceptance error:', error);
             showAppwriteError(error, {
                 title: 'Failed to Process Invitation',
                 skipUnauthorized: true,
             });
+            
+            // On error, redirect to sign up
+            setTimeout(() => {
+                navigateToSignUp();
+            }, 2000);
         } finally {
             setIsProcessingInvitation(false);
         }
     };
 
     const handleNext = () => {
+        setCurrentStep(ScreenNames.INVITE_SEND);
         navigateToInviteSend();
     };
 
     const handleSkip = () => {
-        navigateToHomeTabs();
+        setCurrentStep(ScreenNames.SUBSCRIPTION);
+        (navigation as any).navigate(ScreenNames.SUBSCRIPTION);
     };
 
     if (isProcessingInvitation) {

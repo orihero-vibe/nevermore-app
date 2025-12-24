@@ -56,7 +56,11 @@ export function SignUp() {
         fullName: email.split('@')[0],
       },
       {
-        onSuccess: () => navigateToPermission(),
+        onSuccess: () => {
+          // Onboarding step is now set in authStore.signUp
+          // Just navigate to Permission screen
+          navigateToPermission();
+        },
         onError: (error) => {
           console.error('Sign up failed:', error);
           setErrorMessage(error.message || 'An error occurred during sign up. Please try again.');

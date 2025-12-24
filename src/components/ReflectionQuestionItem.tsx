@@ -9,20 +9,25 @@ type ReflectionQuestionItemProps = {
   isLoading?: boolean;
   onPress: () => void;
   questionNumber?: number;
+  label?: string;
+  isSelected?: boolean;
 };
 
 export const ReflectionQuestionItem: React.FC<ReflectionQuestionItemProps> = ({
   isPlaying = false,
   isLoading = false,
   onPress,
-  questionNumber
+  questionNumber,
+  label,
+  isSelected = false
 }) => {
-  const isActive = isPlaying || isLoading;
+  const isActive = isPlaying || isLoading || isSelected;
+  const displayLabel = label || (questionNumber !== undefined ? `Question ${questionNumber}` : undefined);
   
   return (
     <View>
-      {questionNumber !== undefined && (
-        <Text style={styles.questionLabel}>Question {questionNumber}</Text>
+      {displayLabel && (
+        <Text style={styles.questionLabel}>{displayLabel}</Text>
       )}
       <TouchableOpacity style={styles.reflectionItemWrapper} onPress={onPress} disabled={isLoading}>
         {isActive ? (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,14 +24,24 @@ import { ScreenNames } from '../../constants/ScreenNames';
 import { invitationService } from '../../services/invitation.service';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { showAppwriteError, showSuccessNotification } from '../../services/notifications';
+import { useOnboardingStore } from '../../store/onboardingStore';
+import { useAuthStore } from '../../store/authStore';
+import { getCurrentUser } from '../../services/auth.service';
 
 export function InviteSend() {
   const navigation = useNavigation<any>();
   const [emails, setEmails] = useState<string[]>(['']);
   const [isLoading, setIsLoading] = useState(false);
+  const { setCurrentStep } = useOnboardingStore();
+  const { checkAuth, isAuthenticated } = useAuthStore();
   
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
+
+  // Check authentication status when component mounts
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
   const handleEmailChange = (index: number, value: string) => {
     const newEmails = [...emails];
@@ -71,6 +81,36 @@ export function InviteSend() {
       return;
     }
 
+    // Ensure user is authenticated before sending invitations
+    try {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        Alert.alert(
+          'Authentication Required',
+          'You must be signed in to send invitations. Please sign in and try again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate(ScreenNames.SIGN_IN),
+            },
+          ]
+        );
+        return;
+      }
+    } catch (authError) {
+      Alert.alert(
+        'Authentication Error',
+        'Unable to verify your authentication status. Please sign in and try again.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate(ScreenNames.SIGN_IN),
+          },
+        ]
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -84,6 +124,7 @@ export function InviteSend() {
           `Invitations sent successfully to ${validEmails.length} ${validEmails.length === 1 ? 'friend' : 'friends'}!`,
           'Invitations Sent'
       );
+      setCurrentStep(ScreenNames.SUBSCRIPTION);
       navigation.navigate(ScreenNames.SUBSCRIPTION);
     
     } catch (error: unknown) {
@@ -97,6 +138,7 @@ export function InviteSend() {
   };
 
   const handleSkip = () => {
+    setCurrentStep(ScreenNames.SUBSCRIPTION);
     navigation.navigate(ScreenNames.SUBSCRIPTION);
   };
 

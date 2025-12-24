@@ -2,8 +2,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { useOnboardingStore } from '../store/onboardingStore';
 import { ScreenNames } from '../constants/ScreenNames';
 import { FortyDay } from './screens/FortyDay';
 import { Bookmark } from './screens/Bookmark';
@@ -12,6 +13,7 @@ import { SignIn } from './screens/SignIn';
 import { SignUp } from './screens/SignUp';
 import { ForgotPassword } from './screens/ForgotPassword';
 import { CreateNewPassword } from './screens/CreateNewPassword';
+import { SetPassword } from './screens/SetPassword';
 import { MagicURLVerify } from './screens/MagicURLVerify';
 import { VerifyEmail } from './screens/VerifyEmail';
 import { Permission } from './screens/Permission';
@@ -186,6 +188,13 @@ function RootStack({ initialRouteName }: { initialRouteName: string }) {
         }}
       />
       <Stack.Screen
+        name={ScreenNames.SET_PASSWORD}
+        component={SetPassword}
+        options={{
+          title: 'Set Password',
+        }}
+      />
+      <Stack.Screen
         name={ScreenNames.MAGIC_URL_VERIFY}
         component={MagicURLVerify}
         options={{
@@ -308,7 +317,7 @@ function RootStack({ initialRouteName }: { initialRouteName: string }) {
 const linking = {
   prefixes: [
     'nevermoreapp://',
-    'https://nevermoreapp.com',
+    'https://nevermore-admin-app.vercel.app',
   ],
   config: {
     screens: {
@@ -360,9 +369,43 @@ const linking = {
 
 export function Navigation(props?: any) {
   const { isAuthenticated } = useAuthStore();
+  const { isOnboardingComplete, currentOnboardingStep, completeOnboarding } = useOnboardingStore();
   const navigationRef = useNavigationContainerRef();
 
-  const initialRouteName = isAuthenticated ? ScreenNames.HOME_TABS : ScreenNames.WELCOME;
+  // Determine initial route based on auth and onboarding status
+  const getInitialRouteName = (): string => {
+    if (!isAuthenticated) {
+      return ScreenNames.WELCOME;
+    }
+
+    // If authenticated and onboarding is explicitly complete, go to home
+    if (isOnboardingComplete) {
+      return ScreenNames.HOME_TABS;
+    }
+
+    // If authenticated but onboarding not complete:
+    // - If we have a saved step, resume from there
+    // - Otherwise, start from Permission (beginning of onboarding)
+    // This handles new users who just signed up
+    if (currentOnboardingStep) {
+      return currentOnboardingStep;
+    }
+
+    // No saved step and not complete = new user who just signed up
+    // Start onboarding from Permission
+    return ScreenNames.PERMISSION;
+  };
+
+  const initialRouteName = getInitialRouteName();
+
+  // Mark onboarding complete if user signs in (existing users skip onboarding)
+  // Only do this if they're going to HOME_TABS and onboarding isn't already marked complete
+  useEffect(() => {
+    if (isAuthenticated && initialRouteName === ScreenNames.HOME_TABS && !isOnboardingComplete && !currentOnboardingStep) {
+      // This handles existing users who sign in - they've completed onboarding before
+      completeOnboarding();
+    }
+  }, [isAuthenticated, initialRouteName, isOnboardingComplete, currentOnboardingStep, completeOnboarding]);
 
   return (
     <NavigationContainer ref={navigationRef} linking={linking} {...props}>

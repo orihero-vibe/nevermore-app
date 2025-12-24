@@ -11,15 +11,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import { Button } from '../../components/Button';
+import { useOnboardingStore } from '../../store/onboardingStore';
+import { ScreenNames } from '../../constants/ScreenNames';
 
 export function Permission() {
   const navigation = useNavigation();
+  const { setCurrentStep } = useOnboardingStore();
 
   const handleNext = () => {
-    // TODO: Implement permission logic and navigate to next screen
-    console.log('Next pressed');
+    // Save current step before navigating
+    setCurrentStep(ScreenNames.PURPOSE);
     // Navigate to purpose selection screen
-    (navigation as any).navigate('Purpose');
+    (navigation as any).navigate(ScreenNames.PURPOSE);
   };
 
   return (

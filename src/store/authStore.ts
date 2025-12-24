@@ -3,6 +3,8 @@ import { Models } from 'react-native-appwrite';
 import * as authService from '../services/auth.service';
 import { useBookmarkStore } from './bookmarkStore';
 import { useFortyDayStore } from './fortyDayStore';
+import { useOnboardingStore } from './onboardingStore';
+import { ScreenNames } from '../constants/ScreenNames';
 
 interface AuthState {
   user: Models.User<Models.Preferences> | null;
@@ -32,6 +34,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const user = await authService.signUp({ email, password, name, nickname, type });
+      // Set onboarding step immediately when user signs up
+      // This ensures new users start onboarding
+      useOnboardingStore.getState().setCurrentStep(ScreenNames.PERMISSION);
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ 
@@ -48,6 +53,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authService.signIn(email, password);
       const user = await authService.getCurrentUser();
+      // Mark onboarding as complete for existing users who sign in
+      useOnboardingStore.getState().completeOnboarding();
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ 
@@ -63,6 +70,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       await authService.signOut();
+      
+      // Clear onboarding state on sign out
+      useOnboardingStore.getState().resetOnboarding();
       
       set({ user: null, isAuthenticated: false, isLoading: false });
     } catch (error: any) {
@@ -81,6 +91,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       
       useBookmarkStore.getState().clearBookmarks();
       useFortyDayStore.getState().clearProgress();
+      useOnboardingStore.getState().resetOnboarding();
       
       set({ user: null, isAuthenticated: false, isLoading: false });
     } catch (error: any) {
@@ -143,6 +154,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authService.createMagicURLSession(userId, secret);
       const user = await authService.getCurrentUser();
+      // Mark onboarding as complete for magic URL login (existing users)
+      useOnboardingStore.getState().completeOnboarding();
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ 

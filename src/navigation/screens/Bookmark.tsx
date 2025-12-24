@@ -48,7 +48,7 @@ export function Bookmark() {
 
   const [activeTab, setActiveTab] = useState<'Recovery' | 'Support'>(storeActiveTab);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [bookmarkToDelete, setBookmarkToDelete] = useState<{ id: string; title: string; index: number } | null>(null);
+  const [bookmarkToDelete, setBookmarkToDelete] = useState<{ id: string; title: string; role: string; index: number } | null>(null);
   
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/main-bg.png'));
@@ -146,18 +146,18 @@ export function Bookmark() {
     });
   };
 
-  const handleRemoveBookmark = (bookmarkId: string, title: string, index: number) => {
+  const handleRemoveBookmark = (bookmarkId: string, title: string, role: string, index: number) => {
     bookmarkScales.value[index] = withTiming(0.98, { duration: 100 }, () => {
       bookmarkScales.value[index] = withTiming(1, { duration: 100 });
     });
 
-    setBookmarkToDelete({ id: bookmarkId, title, index });
+    setBookmarkToDelete({ id: bookmarkId, title, role, index });
     setDeleteModalVisible(true);
   };
 
   const handleConfirmDelete = () => {
     if (bookmarkToDelete) {
-      toggleBookmark(bookmarkToDelete.id, bookmarkToDelete.title);
+      toggleBookmark(bookmarkToDelete.id, bookmarkToDelete.title, bookmarkToDelete.role);
       setDeleteModalVisible(false);
       setBookmarkToDelete(null);
     }
@@ -242,7 +242,7 @@ export function Bookmark() {
         ) : (
           <FlatList
             data={filteredBookmarks}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => `${item.id}-${item.role}`}
             style={styles.flatListContainer}
             contentContainerStyle={styles.flatListContent}
             showsVerticalScrollIndicator={false}
@@ -255,7 +255,7 @@ export function Bookmark() {
                 <BlurView intensity={20} tint="dark" style={styles.bookmarkBlur}>
                   <Text style={styles.bookmarkTitle}>{bookmark.title}</Text>
                   <TouchableOpacity
-                    onPress={() => handleRemoveBookmark(bookmark.id, bookmark.title, index)}
+                    onPress={() => handleRemoveBookmark(bookmark.id, bookmark.title, bookmark.role, index)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     style={styles.bookmarkIconButton}
                   >

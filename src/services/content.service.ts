@@ -6,10 +6,12 @@ export interface Content {
   $id: string;
   title: string;
   day?: number;
-  role?: string;
   category?: string | { $id: string; name?: string; title?: string; label?: string; [key: string]: unknown };
   type: string;
-  transcripts?: string[];
+  mainContentRecoveryURL?: string;
+  mainContentSupportURL?: string;
+  transcriptRecoveryURL?: string;
+  transcriptSupportURL?: string;
   images?: string[];
   files?: string[];
   tasks?: string[];

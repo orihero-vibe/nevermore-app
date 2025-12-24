@@ -8,7 +8,7 @@
     "splash": {
       "image": "./src/assets/splash-bg.png",
       "resizeMode": "cover",
-      "backgroundColor": "#2D1B69"
+      "backgroundColor": "#000"
     },
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -20,7 +20,7 @@
       "splash": {
         "image": "./src/assets/splash-bg.png",
         "resizeMode": "cover",
-        "backgroundColor": "#2D1B69"
+        "backgroundColor": "#000"
       },
       "associatedDomains": [
         "applinks:nevermoreapp.com"
@@ -29,12 +29,12 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/App_Icon.png",
-        "backgroundColor": "#2D1B69"
+        "backgroundColor": "#000"
       },
       "splash": {
         "image": "./src/assets/splash-bg.png",
         "resizeMode": "cover",
-        "backgroundColor": "#2D1B69"
+        "backgroundColor": "#000"
       },
       "package": "com.nevermoreapp",
       "intentFilters": [
@@ -69,13 +69,7 @@
       "favicon": "./src/assets/App_Icon.png"
     },
     "plugins": [
-      "expo-asset",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#2D1B69"
-        }
-      ]
+      "expo-asset"
     ]
   }
 }

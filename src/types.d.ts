@@ -33,10 +33,12 @@ export interface Category {
 export interface Content {
   $id: string;
   title: string;
-  role?: string;
   category?: string | Category;
   type: string;
-  transcripts?: string[];
+  mainContentRecoveryURL?: string;
+  mainContentSupportURL?: string;
+  transcriptRecoveryURL?: string;
+  transcriptSupportURL?: string;
   images?: string[];
   files?: string[];
   tasks?: string[];
