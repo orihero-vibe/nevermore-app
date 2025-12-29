@@ -168,13 +168,13 @@ export const CustomDrawerContent = (props: any) => {
           {legalExpanded && (
             <>
               <MenuItem
-                icon={<DocumentIcon color="#fff" width={24} height={24} />}
+                icon={<DocumentIcon color="rgba(255, 255, 255, 0.5)" width={24} height={24} />}
                 text="Terms & Conditions"
                 onPress={handleTermsConditions}
                 isSubItem={true}
               />
               <MenuItem
-                icon={<ShieldIcon color="#fff" width={24} height={24} />}
+                icon={<ShieldIcon color="rgba(255, 255, 255, 0.5)" width={24} height={24} />}
                 text="Privacy Policy"
                 onPress={handlePrivacyPolicy}
                 isSubItem={true}
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   subMenuItemText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 15,
   },
   chevronContainer: {

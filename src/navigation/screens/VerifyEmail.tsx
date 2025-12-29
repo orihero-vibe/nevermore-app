@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,34 +6,52 @@ import {
   StyleSheet,
   StatusBar,
   ImageBackground,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import { Button } from '../../components/Button';
 import { ScreenNames } from '../../constants/ScreenNames';
+import { RootStackParamList } from '../../hooks/useAppNavigation';
+import { createPasswordRecovery, createMagicURLToken } from '../../services/auth.service';
+import { showAppwriteError, showSuccessNotification } from '../../services/notifications';
+
+type VerifyEmailRouteProp = RouteProp<RootStackParamList, ScreenNames.VERIFY_EMAIL>;
+type VerifyEmailNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function VerifyEmail() {
-  const navigation = useNavigation();
-  const route = useRoute();
+  const navigation = useNavigation<VerifyEmailNavigationProp>();
+  const route = useRoute<VerifyEmailRouteProp>();
   
-  // Get the source parameter to determine navigation path
+  // Get the source parameter to determine which email to resend
   const source = route.params?.source || 'signup';
+  const email = route.params?.email || '';
+  const [isResending, setIsResending] = useState(false);
 
-  const handleResendEmail = () => {
-    // TODO: Implement resend email logic
-    console.log('Resend email pressed');
+  const handleResendEmail = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Email address is required to resend the verification email.');
+      return;
+    }
+
+    setIsResending(true);
     
-    // Navigate based on source
-    if (source === 'signup') {
-      // From signup flow, go to onboarding
-      navigation.navigate(ScreenNames.PERMISSION);
-    } else if (source === 'forgot-password') {
-      // From forgot password flow, go to create new password
-      navigation.navigate(ScreenNames.CREATE_NEW_PASSWORD);
-    } else {
-      // Default to permission screen
-      navigation.navigate(ScreenNames.PERMISSION);
+    try {
+      if (source === 'forgot-password') {
+        // Resend password recovery email
+        await createPasswordRecovery(email);
+        showSuccessNotification('Password recovery email has been resent. Please check your inbox.');
+      } else {
+        // Resend magic URL token for signup/verification
+        await createMagicURLToken(email);
+        showSuccessNotification('Verification email has been resent. Please check your inbox.');
+      }
+    } catch (error: unknown) {
+      showAppwriteError(error, { skipUnauthorized: true });
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -68,7 +86,7 @@ export function VerifyEmail() {
               A link to verify your email was sent to
             </Text>
             
-            <Text style={styles.emailText}>Mary.Langston@email.com</Text>
+            <Text style={styles.emailText}>{email || 'your email address'}</Text>
             
             <Text style={styles.spamText}>
               (Please check your spam folder if the email has not arrived after a few minutes).
@@ -85,6 +103,7 @@ export function VerifyEmail() {
                 onPress={handleResendEmail}
                 variant="primary"
                 size="medium"
+                disabled={isResending}
               />
             </View>
           </View>
@@ -131,7 +150,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: '#ffffff',
     marginBottom: 24,
-    fontFamily: 'Cinzel_600SemiBold',
+    fontFamily: 'Cinzel_400Regular',
   },
   instructionText: {
     fontSize: 16,
@@ -158,8 +177,8 @@ const styles = StyleSheet.create({
   },
   didntGetEmailText: {
     fontSize: 16,
-    color: '#8b5cf6',
-    textAlign: 'right',
+    color: '#ffffff',
+    textAlign: 'center',
     marginBottom: 24,
     fontFamily: 'Roboto_500Medium',
   },

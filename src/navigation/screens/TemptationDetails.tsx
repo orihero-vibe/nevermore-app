@@ -38,10 +38,11 @@ import { useTabSwitcher } from '../../hooks/useTabSwitcher';
 import { useBookmarkStore } from '../../store/bookmarkStore';
 import { Image } from 'expo-image';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
-import { useContentDetails, useContentByCategoryAndRole } from '../../hooks/useContent';
+import { useContentDetails } from '../../hooks/useContent';
 import { useEntranceAnimations } from '../../hooks/useEntranceAnimations';
 import { useAudioPlaylist } from '../../hooks/useAudioPlaylist';
 import { useContentPresentation } from '../../hooks/useContentPresentation';
+import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { storageService } from '../../services/storage.service';
 import { getContentCategoryId } from '../../services/content.service';
 
@@ -64,46 +65,24 @@ export default function TemptationDetails() {
   const { contentId, temptationTitle, categoryId: routeCategoryId } = route.params;
   
   const { 
-    content: initialContent, 
-    loading: initialLoading 
+    content, 
+    loading 
   } = useContentDetails(contentId);
-  
-  const hasInitializedRef = React.useRef(false);
   
   // Extract categoryId from content if not provided in route params
   const extractedCategoryId = React.useMemo(() => {
     if (routeCategoryId && routeCategoryId.length > 0) return routeCategoryId;
-    if (initialContent) {
-      return getContentCategoryId(initialContent);
+    if (content) {
+      return getContentCategoryId(content);
     }
     return null;
-  }, [routeCategoryId, initialContent]);
+  }, [routeCategoryId, content]);
   
+  // Default to recovery
   const [activeButton, setActiveButton] = useState<'recovery' | 'support'>('recovery');
   
-  React.useEffect(() => {
-    if (initialContent && !hasInitializedRef.current) {
-      const initialRole = initialContent.role?.toLowerCase();
-      if (initialRole === 'support' || initialRole === 'recovery') {
-        setActiveButton(initialRole as 'recovery' | 'support');
-      }
-      hasInitializedRef.current = true;
-    }
-  }, [initialContent]);
-  
-  const { 
-    content: roleBasedContent, 
-    loading: roleBasedLoading 
-  } = useContentByCategoryAndRole(extractedCategoryId || null, activeButton);
-  
-  // Keep showing initial content if no role-based content exists for the selected role
-  const content = extractedCategoryId 
-    ? (roleBasedContent && roleBasedContent.length > 0 ? roleBasedContent[0] : initialContent)
-    : initialContent;
-  const loading = extractedCategoryId ? roleBasedLoading : initialLoading;
-  
-  // Check if current role has no content (for showing message)
-  const noContentForRole = extractedCategoryId && !roleBasedLoading && roleBasedContent?.length === 0;
+  // Track which audio source is currently active
+  const [activeAudioSource, setActiveAudioSource] = useState<'main' | 'question'>('main');
   
   const scrollY = useSharedValue(0);
   
@@ -114,8 +93,32 @@ export default function TemptationDetails() {
   });
   
   const { headerAnimatedStyle, canvasAnimatedStyle, contentAnimatedStyle } = useEntranceAnimations();
-  const { selectedAudioIndex, audioPlayer, handleAudioSelect, loadPlaylist } = useAudioPlaylist();
-  const { transcript, displayImage, audioFiles } = useContentPresentation(content);
+  
+  // Main content audio player (for mainContentRecoveryURL/mainContentSupportURL)
+  const mainContentAudioPlayer = useAudioPlayer();
+  
+  // Reflection questions audio player (for files array)
+  const { selectedAudioIndex, audioPlayer: reflectionAudioPlayer, handleAudioSelect, loadPlaylist } = useAudioPlaylist();
+  
+  // Get role-specific content presentation data
+  const { mainContentURL, transcriptURL, images, displayImage, audioFiles } = useContentPresentation(content, activeButton);
+  
+  // Load main content audio when URL changes or when switching tabs
+  React.useEffect(() => {
+    if (mainContentURL) {
+      mainContentAudioPlayer.loadAudio(mainContentURL);
+    } else {
+      mainContentAudioPlayer.unloadAudio();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainContentURL, activeButton]);
+  
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Reset image index when content changes
+  React.useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [content?.$id]);
   
   const headerBackgroundStyle = useAnimatedStyle(() => {
     const backgroundColorOpacity = interpolate(
@@ -131,34 +134,66 @@ export default function TemptationDetails() {
   });
   
   const { toggleBookmark, isBookmarked } = useBookmarkStore();
-  const isCurrentlyBookmarked = content ? isBookmarked(content.$id) : false;
+  const currentRole = activeButton === 'recovery' ? 'Recovery' : 'Support';
+  const isCurrentlyBookmarked = content ? isBookmarked(content.$id, currentRole) : false;
 
-  const transcriptFileUrl = transcript || null;
-  
-  const [transcriptFileName, setTranscriptFileName] = useState<string>('Transcript');
+  const [transcriptFileName, setTranscriptFileName] = useState<string>('');
+
+  const truncateFileName = React.useCallback((fileName: string, maxLength: number = 35): string => {
+    if (fileName.length <= maxLength) {
+      return fileName;
+    }
+    
+    // Extract extension if present
+    const lastDotIndex = fileName.lastIndexOf('.');
+    const hasExtension = lastDotIndex > 0;
+    const extension = hasExtension ? fileName.substring(lastDotIndex) : '';
+    const nameWithoutExt = hasExtension ? fileName.substring(0, lastDotIndex) : fileName;
+    
+    // Calculate how many characters we can show (accounting for ".." and extension)
+    const availableLength = maxLength - extension.length - 2; // 2 for ".."
+    
+    if (nameWithoutExt.length <= availableLength) {
+      return fileName;
+    }
+    
+    // Show first part + ".." + last part + extension
+    const firstPartLength = Math.floor(availableLength / 2);
+    const lastPartLength = availableLength - firstPartLength;
+    const firstPart = nameWithoutExt.substring(0, firstPartLength);
+    const lastPart = nameWithoutExt.substring(nameWithoutExt.length - lastPartLength);
+    
+    return `${firstPart}..${lastPart}${extension}`;
+  }, []);
 
   React.useEffect(() => {
-    if (transcriptFileUrl) {
-      storageService.getFileName(transcriptFileUrl)
-        .then(setTranscriptFileName)
-        .catch(() => {
-          setTranscriptFileName('Transcript');
-        });
+    if (transcriptURL) {
+      const fetchFileName = async () => {
+        try {
+          const fileName = await storageService.getFileName(transcriptURL);
+          setTranscriptFileName(fileName);
+        } catch {
+          setTranscriptFileName(`Transcript (${activeButton === 'recovery' ? 'Recovery' : 'Support'})`);
+        }
+      };
+      fetchFileName();
+    } else {
+      setTranscriptFileName('');
     }
-  }, [transcriptFileUrl]);
+  }, [transcriptURL, activeButton]);
 
-  const handleTranscriptDownload = React.useCallback(async () => {
-    if (!transcriptFileUrl) {
+  const handleTranscriptDownload = React.useCallback(async (transcriptUrl: string) => {
+    if (!transcriptUrl) {
       Alert.alert('No File', 'No transcript file available for download.');
       return;
     }
 
     try {
-      await storageService.downloadFile(transcriptFileUrl);
+      await storageService.downloadFile(transcriptUrl);
     } catch (error) {
       console.error('Failed to download transcript file:', error);
     }
-  }, [transcriptFileUrl]);
+  }, []);
 
   const audioFilesRef = React.useRef<string[]>([]);
   React.useEffect(() => {
@@ -171,6 +206,27 @@ export default function TemptationDetails() {
     }
   }, [audioFiles, loadPlaylist]);
 
+  // Get the currently active audio player
+  const currentAudioPlayer = activeAudioSource === 'main' ? mainContentAudioPlayer : reflectionAudioPlayer;
+
+  // Handle switching to main content audio
+  const handleMainContentPlay = React.useCallback(() => {
+    if (activeAudioSource !== 'main') {
+      reflectionAudioPlayer.stop();
+      setActiveAudioSource('main');
+    }
+    mainContentAudioPlayer.togglePlayPause();
+  }, [activeAudioSource, reflectionAudioPlayer, mainContentAudioPlayer]);
+
+  // Handle selecting a reflection question
+  const handleQuestionSelect = React.useCallback(async (index: number) => {
+    if (activeAudioSource !== 'question') {
+      mainContentAudioPlayer.stop();
+      setActiveAudioSource('question');
+    }
+    await handleAudioSelect(index);
+  }, [activeAudioSource, mainContentAudioPlayer, handleAudioSelect]);
+
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
   const suggestionFont = useFont(Roboto_400Regular, 14);
@@ -181,6 +237,8 @@ export default function TemptationDetails() {
 
   const handleButtonPress = (buttonId: 'recovery' | 'support') => {
     setActiveButton(buttonId);
+    // Stop main content audio when switching tabs
+    mainContentAudioPlayer.stop();
   };
 
   const tabSwitcher = useTabSwitcher({
@@ -196,7 +254,8 @@ export default function TemptationDetails() {
 
   const handleBookmarkToggle = () => {
     if (!content) return;
-    toggleBookmark(content.$id, content.title || temptationTitle, content.role);
+    const role = activeButton === 'recovery' ? 'Recovery' : 'Support';
+    toggleBookmark(content.$id, content.title || temptationTitle, role);
   };
 
   if (loading) {
@@ -271,7 +330,7 @@ export default function TemptationDetails() {
           </Animated.View>
         )}
 
-        {noContentForRole && (
+        {extractedCategoryId && !mainContentURL && (
           <View style={styles.noContentMessage}>
             <Text style={styles.noContentText}>
               No {activeButton === 'recovery' ? 'Recovery' : 'Support'} content available for this category.
@@ -283,48 +342,78 @@ export default function TemptationDetails() {
           <Text style={styles.mainTitle}>{content.title}</Text>
           <TouchableOpacity style={styles.bookmarkButton} onPress={handleBookmarkToggle}>
             {isCurrentlyBookmarked ? (
-              <BookmarkActiveIcon width={20} height={24} color="#965CDF" />
+              <BookmarkActiveIcon width={18} height={20} color="#965CDF" />
             ) : (
-              <BookmarkIcon width={20} height={24} />
+              <BookmarkIcon width={18} height={20} />
             )}
           </TouchableOpacity>
         </View>
 
-        <MediaControls
-          isPlaying={audioPlayer.isPlaying}
-          isLoading={audioPlayer.isLoading}
-          currentTime={audioPlayer.currentTime}
-          totalTime={audioPlayer.totalTime}
-          progress={audioPlayer.progress}
-          onPlayPause={audioPlayer.togglePlayPause}
-          onRewind={audioPlayer.rewind}
-          onForward={audioPlayer.forward}
-          onStop={audioPlayer.stop}
-          onSeek={audioPlayer.seekTo}
-        />
+        {(mainContentURL || audioFiles.length > 0) && (
+          <MediaControls
+            isPlaying={currentAudioPlayer.isPlaying}
+            isLoading={currentAudioPlayer.isLoading}
+            currentTime={currentAudioPlayer.currentTime}
+            totalTime={currentAudioPlayer.totalTime}
+            progress={currentAudioPlayer.progress}
+            onPlayPause={currentAudioPlayer.togglePlayPause}
+            onRewind={currentAudioPlayer.rewind}
+            onForward={currentAudioPlayer.forward}
+            onStop={currentAudioPlayer.stop}
+            onSeek={currentAudioPlayer.seekTo}
+          />
+        )}
 
-        {displayImage && (
+        {images.length > 0 && (
           <View style={styles.imageContainer}>
-            <Image source={{ uri: displayImage }} style={styles.imagePlaceholder} />
+            <FlatList
+              data={images}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item, index) => index.toString()}
+              onMomentumScrollEnd={(event) => {
+                const imageWidth = width - 40; // Account for padding (20px each side)
+                const index = Math.round(event.nativeEvent.contentOffset.x / imageWidth);
+                setCurrentImageIndex(index);
+              }}
+              renderItem={({ item }) => (
+                <Image source={{ uri: item }} style={styles.imagePlaceholder} />
+              )}
+              contentContainerStyle={styles.imageListContainer}
+            />
+            {images.length > 1 && (
+              <View style={styles.paginationContainer}>
+                {images.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      index === currentImageIndex && styles.paginationDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         )}
 
-        {transcript && (
+        {transcriptURL && (
           <View style={styles.transcriptSection}>
             <View style={styles.transcriptHeader}>
               <Text style={styles.sectionTitle}>Transcript</Text>
             </View>
             <TouchableOpacity 
               style={styles.transcriptActions} 
-              onPress={handleTranscriptDownload}
+              onPress={() => handleTranscriptDownload(transcriptURL)}
               activeOpacity={0.7}
             >
-              <Text style={styles.transcriptText} numberOfLines={4}>
-                {transcriptFileName}
+              <Text style={styles.transcriptText} numberOfLines={1}>
+                {truncateFileName(transcriptFileName || `Transcript (${activeButton === 'recovery' ? 'Recovery' : 'Support'})`)}
               </Text>
               <TouchableOpacity 
                 style={styles.downloadButton} 
-                onPress={handleTranscriptDownload}
+                onPress={() => handleTranscriptDownload(transcriptURL)}
                 activeOpacity={0.7}
               >
                 <DocumentIcon color="#8B5CF6" />
@@ -333,24 +422,35 @@ export default function TemptationDetails() {
           </View>
         )}
 
-        {audioFiles.length > 0 && (
-          <View style={styles.reflectionSection}>
-            <Text style={styles.sectionTitle}>Reflection Questions</Text>
+        <View style={styles.reflectionSection}>
+          <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Reflection Questions</Text>
+          {mainContentURL && (
+            <ReflectionQuestionItem
+              isPlaying={activeAudioSource === 'main' && mainContentAudioPlayer.isPlaying}
+              isLoading={activeAudioSource === 'main' && mainContentAudioPlayer.isLoading}
+              onPress={handleMainContentPlay}
+              label="Main Content"
+              isSelected={activeAudioSource === 'main'}
+            />
+          )}
+          {audioFiles.length > 0 && (
             <FlatList
               data={audioFiles}
               keyExtractor={(item, index) => index.toString()}
               renderItem={({ item, index }) => (
                 <ReflectionQuestionItem
-                  isPlaying={index === selectedAudioIndex && audioPlayer.isPlaying}
-                  isLoading={index === selectedAudioIndex && audioPlayer.isLoading}
-                  onPress={() => handleAudioSelect(index)}
+                  isPlaying={activeAudioSource === 'question' && index === selectedAudioIndex && reflectionAudioPlayer.isPlaying}
+                  isLoading={activeAudioSource === 'question' && index === selectedAudioIndex && reflectionAudioPlayer.isLoading}
+                  onPress={() => handleQuestionSelect(index)}
+                  questionNumber={index + 1}
+                  isSelected={activeAudioSource === 'question' && index === selectedAudioIndex}
                 />
               )}
               contentContainerStyle={styles.reflectionContainer}
               scrollEnabled={false}
             />
-          </View>
-        )}
+          )}
+        </View>
       </Animated.ScrollView>
     </View>
   );
@@ -465,13 +565,35 @@ const styles = StyleSheet.create({
   imageContainer: {
     marginBottom: 20,
     paddingHorizontal: 20,
+    position: 'relative',
+  },
+  imageListContainer: {
+    paddingHorizontal: 0,
   },
   imagePlaceholder: {
-    width: '100%',
+    width: Dimensions.get('window').width - 40,
     height: 200,
     resizeMode: 'cover',
     backgroundColor: '#1A1A1A',
     borderRadius: 16,
+    marginRight: 0,
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  paginationDotActive: {
+    backgroundColor: '#8B5CF6',
+    width: 24,
   },
   transcriptSection: {
     marginBottom: 30,
@@ -481,6 +603,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  transcriptContainer: {
+    marginTop: 0,
   },
   transcriptActions: {
     flexDirection: 'row',
@@ -512,6 +637,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   reflectionContainer: {
-    marginTop: 15,
+    marginTop: 8,
   },
 });

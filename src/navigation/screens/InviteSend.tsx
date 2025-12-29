@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,15 +24,24 @@ import { ScreenNames } from '../../constants/ScreenNames';
 import { invitationService } from '../../services/invitation.service';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { showAppwriteError, showSuccessNotification } from '../../services/notifications';
+import { useOnboardingStore } from '../../store/onboardingStore';
+import { useAuthStore } from '../../store/authStore';
+import { getCurrentUser } from '../../services/auth.service';
 
 export function InviteSend() {
   const navigation = useNavigation<any>();
-  const [emails, setEmails] = useState<string[]>(['', '']);
+  const [emails, setEmails] = useState<string[]>(['']);
   const [isLoading, setIsLoading] = useState(false);
+  const { setCurrentStep } = useOnboardingStore();
+  const { checkAuth, isAuthenticated } = useAuthStore();
   
   const width = Dimensions.get('window').width;
-  const height = Dimensions.get('window').height;
   const bg = useImage(require('../../assets/gradient.png'));
+
+  // Check authentication status when component mounts
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
   const handleEmailChange = (index: number, value: string) => {
     const newEmails = [...emails];
@@ -72,6 +81,36 @@ export function InviteSend() {
       return;
     }
 
+    // Ensure user is authenticated before sending invitations
+    try {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        Alert.alert(
+          'Authentication Required',
+          'You must be signed in to send invitations. Please sign in and try again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate(ScreenNames.SIGN_IN),
+            },
+          ]
+        );
+        return;
+      }
+    } catch (authError) {
+      Alert.alert(
+        'Authentication Error',
+        'Unable to verify your authentication status. Please sign in and try again.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate(ScreenNames.SIGN_IN),
+          },
+        ]
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -85,6 +124,7 @@ export function InviteSend() {
           `Invitations sent successfully to ${validEmails.length} ${validEmails.length === 1 ? 'friend' : 'friends'}!`,
           'Invitations Sent'
       );
+      setCurrentStep(ScreenNames.SUBSCRIPTION);
       navigation.navigate(ScreenNames.SUBSCRIPTION);
     
     } catch (error: unknown) {
@@ -98,19 +138,22 @@ export function InviteSend() {
   };
 
   const handleSkip = () => {
+    setCurrentStep(ScreenNames.SUBSCRIPTION);
     navigation.navigate(ScreenNames.SUBSCRIPTION);
   };
 
-  const isNextEnabled = emails.some(email => email.trim() !== '');
+  const isNextEnabled = emails.some(email => email.trim() !== '' && validateEmail(email.trim()));
 
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
-        <Canvas style={styles.canvas}>
-          <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
-        </Canvas>
+        <View style={styles.backgroundContainer}>
+          <Canvas style={styles.backgroundCanvas}>
+            <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
+          </Canvas>
+        </View>
         <SafeAreaView style={styles.safeArea}>
+          <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
           <View style={styles.loadingContainer}>
             <LoadingSpinner />
             <Text style={styles.loadingText}>Sending invitations...</Text>
@@ -122,11 +165,13 @@ export function InviteSend() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <Canvas style={styles.canvas}>
-        <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
-      </Canvas>
+      <View style={styles.backgroundContainer}>
+        <Canvas style={styles.backgroundCanvas}>
+          <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
+        </Canvas>
+      </View>
       <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
         <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <ArrowLeftIcon />
@@ -205,15 +250,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  canvas: {
+  backgroundContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
+    height: 300,
+    zIndex: 0,
+  },
+  backgroundCanvas: {
+    height: 300,
   },
   safeArea: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',

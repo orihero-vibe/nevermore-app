@@ -21,6 +21,7 @@ import CheckIcon from '../../assets/icons/check';
 import { Button } from '../../components/Button';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { usePurpose } from '../../hooks/usePurpose';
+import { useOnboardingStore } from '../../store/onboardingStore';
 
 type PurposeType = 'seek-help' | 'help-someone';
 
@@ -28,6 +29,7 @@ export function Purpose() {
   const navigation = useNavigation();
   const [selectedPurpose, setSelectedPurpose] = useState<PurposeType | null>(null);
   const { savePurpose } = usePurpose();
+  const { setCurrentStep } = useOnboardingStore();
   
   const width = Dimensions.get('window').width;
   const height = Dimensions.get('window').height;
@@ -39,6 +41,8 @@ export function Purpose() {
         await savePurpose(selectedPurpose);
         console.log('Selected purpose:', selectedPurpose);
         
+        // Save current step before navigating
+        setCurrentStep(ScreenNames.NICKNAME);
         (navigation as any).navigate(ScreenNames.NICKNAME);
       } catch (error) {
         console.error('Error saving purpose:', error);
@@ -92,7 +96,7 @@ export function Purpose() {
                 <Text style={styles.cardText}>I AM HERE TO{'\n'}SEEK HELP</Text>
                 {selectedPurpose === 'seek-help' && (
                   <View style={styles.checkmarkContainer}>
-                    <CheckIcon />
+                    <CheckIcon color="#000000" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -113,7 +117,7 @@ export function Purpose() {
                 <Text style={styles.cardText}>I AM HERE TO{'\n'}HELP SOMEONE</Text>
                 {selectedPurpose === 'help-someone' && (
                   <View style={styles.checkmarkContainer}>
-                    <CheckIcon />
+                    <CheckIcon color="#000000" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -239,7 +243,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#8b5cf6',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,

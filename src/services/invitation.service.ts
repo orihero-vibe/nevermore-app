@@ -60,19 +60,13 @@ class InvitationService {
 
       const invitationToken = ID.unique();
 
-      const appDownloadLinks = Platform.OS === 'ios' ? 'https://apps.apple.com/app/nevermore-app'
-      : Platform.OS === 'android' ? 'https://play.google.com/store/apps/details?id=com.nevermoreapp'
-      : 'https://nevermoreapp.com';
-
-      const deepLink = Platform.OS === 'ios' ? `https://apps.apple.com/app/nevermore-app/invite?token=${invitationToken}` 
-      : Platform.OS === 'android' ? `https://play.google.com/store/apps/details?id=com.nevermoreapp/invite?token=${invitationToken}`
-      : `https://nevermoreapp.com/invite?token=${invitationToken}`;
+      const deepLink = `https://nevermore-admin-app.vercel.app/invite?token=${invitationToken}`;
       
       try {
         await account.createMagicURLToken({
           userId: ID.unique(),
           email,
-          url: appDownloadLinks,
+          url: deepLink,
         });
       } catch (magicUrlError: any) {
         throw new Error(`Failed to create invitation: ${magicUrlError?.message || 'Unknown error'}`);
@@ -89,7 +83,6 @@ class InvitationService {
           status: 'pending',
           invitationToken,
           deepLink,
-          appDownloadLinks: JSON.stringify(appDownloadLinks),
         },
       });
 

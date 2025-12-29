@@ -17,22 +17,24 @@ import { useSignIn } from '../../hooks/useSignIn';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 
 export const ForgotPassword: React.FC = () => {
-  const { goBack } = useAppNavigation();
+  const { goBack, navigateToVerifyEmail } = useAppNavigation();
   const { isLoading, handlePasswordRecovery } = useSignIn();
   const [email, setEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  const isEmailValid = validateEmail(email);
 
   const handleNext = async () => {
     setErrorMessage(''); // Clear previous errors
-    setSuccessMessage(''); // Clear previous success messages
     await handlePasswordRecovery(
       email,
       {
         onSuccess: () => {
-          setSuccessMessage('We have sent a password reset link to your email address.');
-          // Auto-navigate back after 2 seconds
-          setTimeout(() => goBack(), 2000);
+          navigateToVerifyEmail({ email, source: 'forgot-password' });
         },
         onError: (error) => {
           console.error('Password recovery failed:', error);
@@ -64,7 +66,7 @@ export const ForgotPassword: React.FC = () => {
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.title}>FORGOT YOUR PASSWORD?</Text>
+          <Text style={styles.title}>Forgot Your Password?</Text>
           
           <Text style={styles.instructionText}>
             Enter your email and we will send a link to reset your password.
@@ -75,6 +77,7 @@ export const ForgotPassword: React.FC = () => {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
+            placeholder="Enter email address"
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -85,18 +88,12 @@ export const ForgotPassword: React.FC = () => {
             </View>
           )}
 
-          {successMessage !== '' && (
-            <View style={styles.successContainer}>
-              <Text style={styles.successText}>{successMessage}</Text>
-            </View>
-          )}
-
           <Button
             title="Next"
             onPress={handleNext}
-            disabled={isLoading}
+            disabled={isLoading || !isEmailValid}
             style={styles.nextButton}
-            size="large"
+            size="medium"
           />
         </View>
           </KeyboardAvoidingView>
@@ -148,14 +145,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     color: '#ffffff',
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: 20,
-    fontFamily: 'Roboto_700Bold',
+    fontFamily: 'Cinzel_400Regular',
   },
   instructionText: {
     fontSize: 16,
     color: '#ffffff',
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: 40,
     lineHeight: 24,
     fontFamily: 'Roboto_400Regular',
@@ -171,20 +168,6 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     color: '#ef4444',
-    fontFamily: 'Roboto_400Regular',
-    textAlign: 'center',
-  },
-  successContainer: {
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.3)',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 16,
-  },
-  successText: {
-    fontSize: 14,
-    color: '#22c55e',
     fontFamily: 'Roboto_400Regular',
     textAlign: 'center',
   },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,6 +25,7 @@ import { useBookmarkStore } from '../../store/bookmarkStore';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { useTabSwitcher } from '../../hooks/useTabSwitcher';
 import { Image as ExpoImage } from 'expo-image';
+import { ConfirmationModal } from '../../components/ConfirmationModal';
 
 type RootStackParamList = {
   TemptationDetails: {
@@ -46,6 +47,8 @@ export function Bookmark() {
   } = useBookmarkStore();
 
   const [activeTab, setActiveTab] = useState<'Recovery' | 'Support'>(storeActiveTab);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [bookmarkToDelete, setBookmarkToDelete] = useState<{ id: string; title: string; role: string; index: number } | null>(null);
   
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/main-bg.png'));
@@ -143,26 +146,26 @@ export function Bookmark() {
     });
   };
 
-  const handleRemoveBookmark = (bookmarkId: string, title: string, index: number) => {
+  const handleRemoveBookmark = (bookmarkId: string, title: string, role: string, index: number) => {
     bookmarkScales.value[index] = withTiming(0.98, { duration: 100 }, () => {
       bookmarkScales.value[index] = withTiming(1, { duration: 100 });
     });
 
-    Alert.alert(
-      'Are you sure you want to remove this temptation from your Bookmarks?',
-      'You will need to bookmark the temptation again in order to see it appear on the Bookmark page.',
-      [
-        {
-          text: 'Keep the Bookmark',
-          style: 'cancel',
-        },
-        {
-          text: 'Remove Bookmark',
-          style: 'destructive',
-          onPress: () => toggleBookmark(bookmarkId, title),
-        },
-      ]
-    );
+    setBookmarkToDelete({ id: bookmarkId, title, role, index });
+    setDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (bookmarkToDelete) {
+      toggleBookmark(bookmarkToDelete.id, bookmarkToDelete.title, bookmarkToDelete.role);
+      setDeleteModalVisible(false);
+      setBookmarkToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteModalVisible(false);
+    setBookmarkToDelete(null);
   };
 
   return (
@@ -199,11 +202,14 @@ export function Bookmark() {
           }}
         >
           <Canvas style={styles.canvas}>
+            {/* Background image rendered first so BackdropFilter can blur it */}
+            <Image image={bg} x={0} y={0} width={width} height={900} fit="cover" />
+            
             <SkiaText
-              text="BOOKMARK"
+              text="Bookmark"
               font={headerText}
               color="white"
-              x={headerText ? width / 2 - (headerText.getTextWidth("BOOKMARK") / 2) : width / 2 - 100}
+              x={headerText ? width / 2 - (headerText.getTextWidth("Bookmark") / 2) : width / 2 - 100}
               y={150}
             />
 
@@ -219,14 +225,14 @@ export function Bookmark() {
           <View style={styles.emptyStateContainer}>
             <BlurView intensity={20} tint="dark" style={styles.emptyStateCard}>
               <Text style={styles.emptyStateTitle}>
-                Bookmark your favourite temptations
+                Bookmark your favourite temptations.
               </Text>
               <Text style={styles.emptyStateSubtitle}>
-                We'll save them here for you
+                We'll save them here for you.
               </Text>
               <View style={styles.emptyStateIconContainer}>
                 <ExpoImage 
-                  source={require('../../assets/empty-bookmark.png')} 
+                  source={require('../../assets/bookmark-empty.png')} 
                   style={styles.emptyImage}
                   contentFit="cover"
                 />
@@ -236,7 +242,7 @@ export function Bookmark() {
         ) : (
           <FlatList
             data={filteredBookmarks}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => `${item.id}-${item.role}`}
             style={styles.flatListContainer}
             contentContainerStyle={styles.flatListContent}
             showsVerticalScrollIndicator={false}
@@ -249,7 +255,7 @@ export function Bookmark() {
                 <BlurView intensity={20} tint="dark" style={styles.bookmarkBlur}>
                   <Text style={styles.bookmarkTitle}>{bookmark.title}</Text>
                   <TouchableOpacity
-                    onPress={() => handleRemoveBookmark(bookmark.id, bookmark.title, index)}
+                    onPress={() => handleRemoveBookmark(bookmark.id, bookmark.title, bookmark.role, index)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     style={styles.bookmarkIconButton}
                   >
@@ -262,6 +268,17 @@ export function Bookmark() {
           />
         )}
       </Animated.View>
+
+      <ConfirmationModal
+        visible={deleteModalVisible}
+        title="Are you sure you want to remove this temptation from your Bookmarks?"
+        description="You will need to bookmark the temptation again in order to see it appear on the Bookmark page."
+        cancelText="Keep the Bookmark"
+        confirmText="Remove Bookmark"
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        confirmButtonColor="#ff4444"
+      />
     </View>
   );
 }
@@ -326,7 +343,7 @@ const styles = StyleSheet.create({
   },
   bookmarkBlur: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -334,8 +351,8 @@ const styles = StyleSheet.create({
   },
   bookmarkTitle: {
     color: '#fff',
-    fontSize: 12,
-    fontFamily: 'Cinzel_400Regular',
+    fontSize: 16,
+    fontFamily: 'Cinzel_600SemiBold',
     flex: 1,
   },
   bookmarkIconButton: {
@@ -364,20 +381,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     overflow: 'hidden',
   },
   emptyStateTitle: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'Roboto_400Regular',
+    fontFamily: 'Roboto_500Medium',
     textAlign: 'center',
     marginBottom: 6,
   },
   emptyStateSubtitle: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'Roboto_400Regular',
+    fontFamily: 'Roboto_500Medium',
     textAlign: 'center',
     marginBottom: 16,
   },

@@ -6,16 +6,16 @@ export interface Bookmark {
   id: string;
   title: string;
   timestamp: number;
-  role?: string; // Role field from content (Recovery/Support)
+  role: string; // Role field from content (Recovery/Support)
 }
 
 interface BookmarkState {
   bookmarks: Bookmark[];
   activeTab: 'Recovery' | 'Support';
-  addBookmark: (id: string, title: string, role?: string) => void;
-  removeBookmark: (id: string) => void;
-  isBookmarked: (id: string) => boolean;
-  toggleBookmark: (id: string, title: string, role?: string) => void;
+  addBookmark: (id: string, title: string, role: string) => void;
+  removeBookmark: (id: string, role: string) => void;
+  isBookmarked: (id: string, role: string) => boolean;
+  toggleBookmark: (id: string, title: string, role: string) => void;
   clearBookmarks: () => void;
   setActiveTab: (tab: 'Recovery' | 'Support') => void;
   getFilteredBookmarks: (tab?: 'Recovery' | 'Support') => Bookmark[];
@@ -27,7 +27,7 @@ export const useBookmarkStore = create<BookmarkState>()(
       bookmarks: [],
       activeTab: 'Recovery',
       
-      addBookmark: (id: string, title: string, role?: string) => {
+      addBookmark: (id: string, title: string, role: string) => {
         set((state) => ({
           bookmarks: [
             ...state.bookmarks,
@@ -36,20 +36,24 @@ export const useBookmarkStore = create<BookmarkState>()(
         }));
       },
       
-      removeBookmark: (id: string) => {
+      removeBookmark: (id: string, role: string) => {
         set((state) => ({
-          bookmarks: state.bookmarks.filter(bookmark => bookmark.id !== id)
+          bookmarks: state.bookmarks.filter(
+            bookmark => !(bookmark.id === id && bookmark.role === role)
+          )
         }));
       },
       
-      isBookmarked: (id: string) => {
-        return get().bookmarks.some(bookmark => bookmark.id === id);
+      isBookmarked: (id: string, role: string) => {
+        return get().bookmarks.some(
+          bookmark => bookmark.id === id && bookmark.role === role
+        );
       },
       
-      toggleBookmark: (id: string, title: string, role?: string) => {
+      toggleBookmark: (id: string, title: string, role: string) => {
         const state = get();
-        if (state.isBookmarked(id)) {
-          state.removeBookmark(id);
+        if (state.isBookmarked(id, role)) {
+          state.removeBookmark(id, role);
         } else {
           state.addBookmark(id, title, role);
         }

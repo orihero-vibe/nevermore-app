@@ -73,12 +73,8 @@ export function App() {
 
   React.useEffect(() => {
     if (cinzelFontsLoaded && robotoFontsLoaded && assetsLoaded && authChecked) {
-      const timer = setTimeout(() => {
         setShowSplash(false);
         SplashScreen.hideAsync();
-      }, 2000);
-      
-      return () => clearTimeout(timer);
     }
   }, [cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded, authChecked]);
 

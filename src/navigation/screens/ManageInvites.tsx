@@ -7,15 +7,21 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  ImageBackground,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  Canvas,
+  Image as SkiaImage,
+  useImage,
+} from '@shopify/react-native-skia';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
 import TrashIcon from '../../assets/icons/trash';
 import { invitationService, Invitation } from '../../services/invitation.service';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { showAppwriteError, showSuccessNotification } from '../../services/notifications';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
@@ -86,8 +92,12 @@ export const ManageInvites: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [invitationToDelete, setInvitationToDelete] = useState<Invitation | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const MAX_INVITES = 3;
+  const width = Dimensions.get('window').width;
+  const bg = useImage(require('../../assets/gradient.png'));
 
   useEffect(() => {
     loadInvitations();
@@ -112,34 +122,32 @@ export const ManageInvites: React.FC = () => {
   };
 
   const handleDeleteInvitation = (invitation: Invitation) => {
-    Alert.alert(
-      'Remove Invitation',
-      `Are you sure you want to remove the invitation for ${invitation.email}?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setDeletingId(invitation.$id || null);
-              if (invitation.$id) {
-                await invitationService.deleteInvitation(invitation.$id);
-                showSuccessNotification('Invitation removed successfully');
-                loadInvitations();
-              }
-            } catch (error: unknown) {
-              showAppwriteError(error, { skipUnauthorized: true });
-            } finally {
-              setDeletingId(null);
-            }
-          },
-        },
-      ]
-    );
+    setInvitationToDelete(invitation);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteInvitation = async () => {
+    if (!invitationToDelete) return;
+    
+    try {
+      setDeletingId(invitationToDelete.$id || null);
+      if (invitationToDelete.$id) {
+        await invitationService.deleteInvitation(invitationToDelete.$id);
+        showSuccessNotification('Invitation removed successfully');
+        loadInvitations();
+      }
+    } catch (error: unknown) {
+      showAppwriteError(error, { skipUnauthorized: true });
+    } finally {
+      setDeletingId(null);
+      setInvitationToDelete(null);
+      setShowDeleteModal(false);
+    }
+  };
+
+  const cancelDeleteInvitation = () => {
+    setInvitationToDelete(null);
+    setShowDeleteModal(false);
   };
 
   const handleResendInvitation = async (invitation: Invitation) => {
@@ -168,12 +176,14 @@ export const ManageInvites: React.FC = () => {
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/gradient.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <View style={styles.backgroundContainer}>
+        <Canvas style={styles.backgroundCanvas}>
+          <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
+        </Canvas>
+      </View>
+      
+      <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
         
         <View style={styles.header}>
@@ -249,18 +259,42 @@ export const ManageInvites: React.FC = () => {
           </ScrollView>
         )}
       </SafeAreaView>
-    </ImageBackground>
+
+      <ConfirmationModal
+        visible={showDeleteModal}
+        title={
+          invitationToDelete
+            ? `Are you sure you want to remove the invitation for ${invitationToDelete.email}?`
+            : 'Are you sure you want to remove this invitation?'
+        }
+        description="If you remove this invitation, you will need to send a new one to invite this person again."
+        cancelText="Keep Invitation"
+        confirmText="Remove Invitation"
+        onCancel={cancelDeleteInvitation}
+        onConfirm={confirmDeleteInvitation}
+        confirmButtonColor="#EF4444"
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#131313',
-  },
   container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+    zIndex: 0,
+  },
+  backgroundCanvas: {
+    height: 300,
+  },
+  safeArea: {
     flex: 1,
     backgroundColor: 'transparent',
   },
@@ -334,7 +368,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 18,

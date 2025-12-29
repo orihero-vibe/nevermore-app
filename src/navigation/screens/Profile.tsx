@@ -7,10 +7,15 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  ImageBackground,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import {
+  Canvas,
+  Image as SkiaImage,
+  useImage,
+} from '@shopify/react-native-skia';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
 import EditIcon from '../../assets/icons/edit';
 import ChevronRightIcon from '../../assets/icons/chevron-right';
@@ -19,6 +24,7 @@ import { ScreenNames } from '../../constants/ScreenNames';
 import { useAuthStore } from '../../store/authStore';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { EditFieldModal } from '../../components/EditFieldModal';
+import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { account } from '../../services/appwrite.config';
 
 interface EditableFieldProps {
@@ -38,8 +44,8 @@ const EditableField: FC<EditableFieldProps> = ({
     <View style={styles.fieldContainer}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <View style={styles.fieldInputContainer}>
-        <Text style={styles.fieldValue}>
-          {isPassword ? '• • • • • • • • •' : value}
+        <Text style={[styles.fieldValue, isPassword && styles.passwordValue]}>
+          {isPassword ? '• • • • • • • •' : value}
         </Text>
         <TouchableOpacity
           onPress={onEdit}
@@ -57,10 +63,14 @@ type EditFieldType = 'nickname' | 'fullName' | 'email' | 'phone' | 'password' | 
 
 export const Profile: React.FC = () => {
   const navigation = useNavigation();
-  const { user, signOut, deleteAccount } = useAuthStore();
+  const { user, deleteAccount } = useAuthStore();
   const { profile, isLoading, updateProfile, checkNicknameAvailability } = useUserProfile();
   
   const [editingField, setEditingField] = useState<EditFieldType>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  
+  const width = Dimensions.get('window').width;
+  const bg = useImage(require('../../assets/gradient.png'));
 
   const handleEditNickname = async (value: string): Promise<boolean> => {
     return await updateProfile({ nickname: value });
@@ -205,84 +215,47 @@ export const Profile: React.FC = () => {
     (navigation as any).navigate(ScreenNames.MANAGE_INVITES);
   };
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              (navigation as any).reset({
-                index: 0,
-                routes: [{ name: ScreenNames.WELCOME }],
-              });
-            } catch (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+  const handleDeleteAccount = () => {
+    setShowDeleteConfirmation(true);
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone and will permanently delete:\n\n• Your profile information\n• All your data\n• Your authentication credentials',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAccount();
-              
-              // Navigate to welcome screen after successful deletion
-              (navigation as any).reset({
-                index: 0,
-                routes: [{ name: ScreenNames.WELCOME }],
-              });
-              
-              // Show success message after navigation
-              setTimeout(() => {
-                Alert.alert(
-                  'Account Deleted', 
-                  'Your account data has been permanently deleted.'
-                );
-              }, 500);
-            } catch (error: any) {
-              console.error('Error deleting account:', error);
-              Alert.alert(
-                'Error', 
-                error.message || 'Failed to delete account. Please try again.'
-              );
-            }
-          },
-        },
-      ]
-    );
+  const handleConfirmDeleteAccount = async () => {
+    try {
+      await deleteAccount();
+      
+      // Navigate to welcome screen after successful deletion
+      (navigation as any).reset({
+        index: 0,
+        routes: [{ name: ScreenNames.WELCOME }],
+      });
+      
+      // Show success message after navigation
+      setTimeout(() => {
+        Alert.alert(
+          'Account Deleted', 
+          'Your account data has been permanently deleted.'
+        );
+      }, 500);
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      Alert.alert(
+        'Error', 
+        error.message || 'Failed to delete account. Please try again.'
+      );
+    } finally {
+      setShowDeleteConfirmation(false);
+    }
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/gradient.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <View style={styles.backgroundContainer}>
+        <Canvas style={styles.backgroundCanvas}>
+          <SkiaImage image={bg} x={0} y={0} width={width} height={300} fit="cover" />
+        </Canvas>
+      </View>
+      
+      <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
         <View style={styles.header}>
@@ -312,14 +285,14 @@ export const Profile: React.FC = () => {
 
             <View style={styles.fieldsContainer}>
               <EditableField
-                label="Full Name"
-                value={profile?.full_name || 'Not set'}
-                onEdit={() => setEditingField('fullName')}
-              />
-              <EditableField
                 label="Nickname"
                 value={profile?.nickname || 'Not set'}
                 onEdit={() => setEditingField('nickname')}
+              />
+              <EditableField
+                label="Phone Number"
+                value={profile?.phone || 'Not set'}
+                onEdit={() => setEditingField('phone')}
               />
               <EditableField
                 label="Email"
@@ -327,13 +300,9 @@ export const Profile: React.FC = () => {
                 onEdit={() => setEditingField('email')}
               />
               <EditableField
-                label="Phone"
-                value={profile?.phone || 'Not set'}
-                onEdit={() => setEditingField('phone')}
-              />
-              <EditableField
                 label="Password"
-                value="********"
+                value="••••••••••"
+                
                 isPassword={true}
                 onEdit={() => setEditingField('password')}
               />
@@ -349,14 +318,6 @@ export const Profile: React.FC = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={styles.deleteAccountButton}
               onPress={handleDeleteAccount}
               activeOpacity={0.7}
@@ -367,15 +328,6 @@ export const Profile: React.FC = () => {
         )}
 
         {/* Edit Modals */}
-        <EditFieldModal
-          visible={editingField === 'fullName'}
-          title="Edit Full Name"
-          label="Full Name"
-          value={profile?.full_name || ''}
-          placeholder="Enter your full name"
-          onClose={() => setEditingField(null)}
-          onSave={handleEditFullName}
-        />
 
         <EditFieldModal
           visible={editingField === 'nickname'}
@@ -386,17 +338,6 @@ export const Profile: React.FC = () => {
           onClose={() => setEditingField(null)}
           onSave={handleEditNickname}
           validateInput={validateNickname}
-        />
-
-        <EditFieldModal
-          visible={editingField === 'email'}
-          title="Edit Email"
-          label="Email"
-          value={user?.email || ''}
-          placeholder="Enter your email"
-          onClose={() => setEditingField(null)}
-          onSave={handleEditEmail}
-          validateInput={validateEmail}
         />
 
         <EditFieldModal
@@ -411,6 +352,19 @@ export const Profile: React.FC = () => {
         />
 
         <EditFieldModal
+          visible={editingField === 'email'}
+          title="Edit Email"
+          label="Email"
+          value={user?.email || ''}
+          placeholder="Enter your email"
+          onClose={() => setEditingField(null)}
+          onSave={handleEditEmail}
+          validateInput={validateEmail}
+        />
+
+      
+
+        <EditFieldModal
           visible={editingField === 'password'}
           title="Change Password"
           label="New Password"
@@ -421,19 +375,39 @@ export const Profile: React.FC = () => {
           onSave={handleEditPassword}
           validateInput={validatePassword}
         />
+
+        <ConfirmationModal
+          visible={showDeleteConfirmation}
+          title="Are you sure you want to delete your account?"
+          description="If you delete this account, a new one will need to be created to access content."
+          cancelText="Keep My Account"
+          confirmText="Delete Account"
+          onCancel={() => setShowDeleteConfirmation(false)}
+          onConfirm={handleConfirmDeleteAccount}
+          confirmButtonColor="#ff4444"
+        />
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#131313',
-  },
   container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+    zIndex: 0,
+  },
+  backgroundCanvas: {
+    height: 300,
+  },
+  safeArea: {
     flex: 1,
     backgroundColor: 'transparent',
   },
@@ -480,14 +454,14 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#ffffff',
     marginBottom: 32,
-    fontFamily: 'Roboto_400Regular',
+    fontFamily: 'Cinzel_400Regular',
     letterSpacing: 0.5,
   },
   fieldsContainer: {
     marginBottom: 32,
   },
   fieldContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   fieldLabel: {
     fontSize: 16,
@@ -505,13 +479,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    minHeight: 56,
+    minHeight: 48,
   },
   fieldValue: {
     flex: 1,
     fontSize: 16,
     color: '#ffffff',
     fontFamily: 'Roboto_400Regular',
+  },
+  passwordValue: {
+    fontSize: 28,
   },
   editButton: {
     padding: 4,
@@ -530,16 +507,6 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   manageUsersText: {
-    fontSize: 16,
-    color: '#ffffff',
-    fontFamily: 'Roboto_500Medium',
-  },
-  signOutButton: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginBottom: 12,
-  },
-  signOutText: {
     fontSize: 16,
     color: '#ffffff',
     fontFamily: 'Roboto_500Medium',

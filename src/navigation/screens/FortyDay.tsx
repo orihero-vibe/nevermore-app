@@ -38,7 +38,7 @@ import SoundWaveIcon from '../../assets/icons/sound-wave';
 import CheckmarkIcon from '../../assets/icons/checkmark';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH * 0.68;
+const CARD_WIDTH = SCREEN_WIDTH * 0.6;
 
 export const FortyDay = () => {
   const { raw: navigation, navigateToHelpSupport } = useAppNavigation();
@@ -197,40 +197,45 @@ export const FortyDay = () => {
 
             <View style={styles.mediaControls}>
               {isCurrentItem && audioPlayer.isLoading ? (
-                <View style={styles.mediaButton}>
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                <View style={styles.mediaControlsContainer}>
+                  <View style={styles.mediaIconArea}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  </View>
+                  <View style={styles.mediaIconArea} />
                 </View>
               ) : (
-                <TouchableOpacity 
-                  style={[
-                    styles.mediaButton,
-                    !item.audioUrl && styles.mediaButtonDisabled
-                  ]}
-                  onPress={() => isCurrentItem && item.audioUrl && handlePlayPause(item.audioUrl)}
-                  disabled={!item.audioUrl}
-                >
-                  {isCurrentItem && audioPlayer.isPlaying ? (
-                    <PauseIcon width={20} height={20} />
-                  ) : (
-                    <PlayIcon width={20} height={20} />
-                  )}
-                </TouchableOpacity>
+                <View style={styles.mediaControlsContainer}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.mediaIconArea,
+                      !item.audioUrl && styles.mediaIconAreaDisabled
+                    ]}
+                    onPress={() => isCurrentItem && item.audioUrl && handlePlayPause(item.audioUrl)}
+                    disabled={!item.audioUrl}
+                  >
+                    {isCurrentItem && audioPlayer.isPlaying ? (
+                      <PauseIcon width={20} height={20} />
+                    ) : (
+                      <PlayIcon width={20} height={20} />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[
+                      styles.mediaIconArea,
+                      !item.audioUrl && styles.mediaIconAreaDisabled,
+                      isCurrentItem && audioPlayer.isLoading && styles.mediaIconAreaDisabled
+                    ]}
+                    onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
+                    disabled={!item.audioUrl || (isCurrentItem && audioPlayer.isLoading)}
+                  >
+                    {isCurrentItem && audioPlayer.isMuted ? (
+                      <VolumeMutedIcon width={20} height={20} />
+                    ) : (
+                      <VolumeIcon width={20} height={20} />
+                    )}
+                  </TouchableOpacity>
+                </View>
               )}
-              <TouchableOpacity 
-                style={[
-                  styles.mediaButton,
-                  !item.audioUrl && styles.mediaButtonDisabled,
-                  isCurrentItem && audioPlayer.isLoading && styles.mediaButtonDisabled
-                ]}
-                onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
-                disabled={!item.audioUrl || (isCurrentItem && audioPlayer.isLoading)}
-              >
-                {isCurrentItem && audioPlayer.isMuted ? (
-                  <VolumeMutedIcon width={20} height={20} />
-                ) : (
-                  <VolumeIcon width={20} height={20} />
-                )}
-              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -268,7 +273,7 @@ export const FortyDay = () => {
           scrollEventThrottle={16}
         >
         <View style={[styles.headerSpacer, { height: insets.top + 100 }]} />
-        <Text style={styles.mainTitle}>40 DAY JOURNEY</Text>
+        <Text style={styles.mainTitle}>40 Day Journey</Text>
 
         {loading && (
           <View style={styles.loadingContainer}>
@@ -439,8 +444,8 @@ const styles = StyleSheet.create({
     width: 40,
   },
   mainTitle: {
-    fontFamily: 'Cinzel_600SemiBold',
-    fontSize: 28,
+    fontFamily: 'Cinzel_400Regular',
+    fontSize: 32,
     color: '#fff',
     textAlign: 'center',
     letterSpacing: 2,
@@ -451,11 +456,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 30,
-    height: 300,
+    minHeight: 300,
   },
   carouselWrapper: {
     width: CARD_WIDTH,
-    height: 280,
+    minHeight: 280,
   },
   carousel: {
     width: CARD_WIDTH,
@@ -482,7 +487,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    height: 260,
+    minHeight: 260,
     borderRadius: 20,
     overflow: 'hidden',
     position: 'relative',
@@ -512,28 +517,24 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   dayLabel: {
-    fontFamily: 'Roboto_400Regular',
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-    letterSpacing: 2,
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    fontFamily: 'Cinzel_600SemiBold',
+    fontSize: 18,
+    color: '#fff',
   },
   dayNumber: {
-    fontFamily: 'Cinzel_900Black',
+    fontFamily: 'Cinzel_400Regular',
     fontSize: 76,
     color: '#fff',
-    marginBottom: 12,
   },
   completionText: {
     fontFamily: 'Roboto_400Regular',
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: 12,
+    marginBottom: 20,
   },
   completionPercentage: {
     color: '#fff',
@@ -544,17 +545,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: 20,
-    gap: 12,
   },
-  mediaButton: {
-    width: 44,
-    height: 44,
+  mediaControlsContainer: {
+    flexDirection: 'row',
+    width: 100,
+    height: 36,
     borderRadius: 22,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  mediaIconArea: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    height: '100%',
   },
-  mediaButtonDisabled: {
+  mediaIconAreaDisabled: {
     opacity: 0.3,
   },
   tasksSection: {
@@ -598,8 +606,8 @@ const styles = StyleSheet.create({
   soundWaveContainer: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 12,
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,

@@ -93,9 +93,9 @@ const styles = StyleSheet.create({
     minHeight: 36,
   },
   buttonMedium: {
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 24,
-    minHeight: 56,
+    minHeight: 48,
   },
   buttonLarge: {
     paddingVertical: 20,
@@ -129,7 +129,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   buttonDisabled: {
-    backgroundColor: '#4a4a4a',
+    backgroundColor: '#8b5cf6',
+    opacity: 0.7,
     shadowOpacity: 0,
     elevation: 0,
   },
