@@ -14,12 +14,16 @@ export interface Task {
   duration?: number;
 }
 
+const FREE_JOURNEY_DAYS_MAX = 3;
+
 export interface DayData {
   day: number;
   title: string;
   completionPercentage: number;
   tasks: Task[];
   audioUrl?: string;
+  /** True when this day is free (admin-set). Only Day 1–3 can be free. */
+  isFree?: boolean;
 }
 
 interface FortyDayState {
@@ -195,13 +199,17 @@ export const useFortyDayStore = create<FortyDayState>()(
             
             // Convert Appwrite file ID to proper storage URL
             const audioUrl = getFirstFileUrl(content.files);
-            
+            // Only Day 1–3 can be free; respect content.isFree when set
+            const isFree =
+              dayNumber <= FREE_JOURNEY_DAYS_MAX && content.isFree === true;
+
             return {
               day: dayNumber,
               title: content.title || `Day ${dayNumber}`,
               completionPercentage,
               tasks,
               audioUrl,
+              isFree,
             };
           });
           

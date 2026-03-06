@@ -234,8 +234,8 @@ export function Invite() {
     };
 
     const handleSkip = () => {
-        setCurrentStep(ScreenNames.SUBSCRIPTION);
-        (navigation as any).navigate(ScreenNames.SUBSCRIPTION);
+        completeOnboarding();
+        navigateToHomeTabs();
     };
 
     if (isProcessingInvitation) {

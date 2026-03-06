@@ -2,7 +2,7 @@
   "expo": {
     "name": "nevermore-app",
     "slug": "nevermore-app",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "default",
     "icon": "./src/assets/App_Icon.png",
     "splash": {
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nevermore.app",
-      "buildNumber": "2",
+      "buildNumber": "12",
       "splash": {
         "image": "./src/assets/splash-bg.png",
         "resizeMode": "cover",
@@ -24,7 +24,8 @@
       },
       "associatedDomains": [
         "applinks:nevermoreapp.com"
-      ]
+      ],
+      "appleTeamId": "C5DF3CP9LJ"
     },
     "android": {
       "adaptiveIcon": {
@@ -63,6 +64,10 @@
             "DEFAULT"
           ]
         }
+      ],
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -77,7 +82,8 @@
           "backgroundColor": "#2D1B69"
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      "react-native-iap"
     ]
   }
 }

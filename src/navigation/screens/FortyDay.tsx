@@ -26,6 +26,10 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFortyDayStore } from '../../store/fortyDayStore';
 import { useFortyDayAudioPlayer } from '../../hooks/useFortyDayAudioPlayer';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { isJourneyDayFree } from '../../utils/contentAccess';
+import { SubscriptionPopup } from '../../components/SubscriptionPopup';
+import LockIcon from '../../assets/icons/lock';
 import MenuIcon from '../../assets/icons/menu';
 import FlagIcon from '../../assets/icons/flag';
 import ChevronLeftIcon from '../../assets/icons/chevron-left';
@@ -54,7 +58,9 @@ export const FortyDay = () => {
     loadFortyDayContent ,
   } = useFortyDayStore();
 
-  
+  const { isSubscribed } = useSubscriptionStore();
+  const [subscriptionPopupVisible, setSubscriptionPopupVisible] = useState(false);
+
   const carouselRef = useRef<any>(null);
   const [activeIndex, setActiveIndex] = useState(() => {
     if (days.length === 0) return 0;
@@ -147,6 +153,14 @@ export const FortyDay = () => {
   };
 
   const handleTaskToggle = (taskId: string) => {
+    if (
+      currentDayData &&
+      !isSubscribed &&
+      !isJourneyDayFree(currentDayData.day, currentDayData.isFree)
+    ) {
+      setSubscriptionPopupVisible(true);
+      return;
+    }
     toggleTask(currentDayData.day, taskId);
   };
 
@@ -167,78 +181,106 @@ export const FortyDay = () => {
 
   const renderCarouselItem = ({ item }: { item: typeof days[0] }) => {
     const isCurrentItem = item.day === days[activeIndex]?.day;
-    
-    return (
-      <View style={styles.carouselItemContainer}>
-        <View style={styles.card}>
-          <BlurView
-            intensity={20}
-            tint="dark"
-            style={StyleSheet.absoluteFillObject}
-          />
-          <View style={styles.cardOverlay} />
-          <View style={styles.cardContentWrapper}>
-            <View style={styles.cardHeader}>
-                              <TouchableOpacity 
-                                style={styles.flagButton}
-                                onPress={() => navigateToHelpSupport({ preSelectedReason: 'Inappropriate Content' })}
-                              >
-                                <FlagIcon width={30} height={30} />
-                              </TouchableOpacity>
-                            </View>
+    const isLocked =
+      !isSubscribed && !isJourneyDayFree(item.day, item.isFree);
 
-            <View style={styles.cardContent}>
-              <Text style={styles.dayLabel}>{item.title}</Text>
-              <Text style={styles.dayNumber}>{item.day}</Text>
-              <Text style={styles.completionText}>
-                Completed: <Text style={styles.completionPercentage}>{item.completionPercentage}%</Text>
-              </Text>
-            </View>
+    const cardContent = (
+      <View style={styles.card}>
+        <BlurView
+          intensity={20}
+          tint="dark"
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={[styles.cardOverlay, isLocked && styles.cardOverlayLocked]} />
+        <View style={styles.cardContentWrapper}>
+          <View style={styles.cardHeader}>
+            {!isLocked && (
+              <TouchableOpacity
+                style={styles.flagButton}
+                onPress={() => navigateToHelpSupport({ preSelectedReason: 'Inappropriate Content' })}
+              >
+                <FlagIcon width={30} height={30} />
+              </TouchableOpacity>
+            )}
+            {isLocked && (
+              <View style={styles.lockIconBadge}>
+                <LockIcon width={24} height={24} color="#9CA3AF" />
+              </View>
+            )}
+          </View>
 
-            <View style={styles.mediaControls}>
-              {isCurrentItem && audioPlayer.isLoading ? (
-                <View style={styles.mediaControlsContainer}>
-                  <View style={styles.mediaIconArea}>
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  </View>
-                  <View style={styles.mediaIconArea} />
+          <View style={styles.cardContent}>
+            <Text style={[styles.dayLabel, isLocked && styles.dayTextLocked]}>{item.title}</Text>
+            <Text style={[styles.dayNumber, isLocked && styles.dayTextLocked]}>{item.day}</Text>
+            <Text style={styles.completionText}>
+              Completed: <Text style={styles.completionPercentage}>{item.completionPercentage}%</Text>
+            </Text>
+          </View>
+
+          <View style={styles.mediaControls}>
+            {isLocked ? (
+              <View style={styles.mediaControlsLocked}>
+                <LockIcon width={20} height={20} color="#6B7280" />
+                <Text style={styles.lockedHint}>Unlock to play</Text>
+              </View>
+            ) : isCurrentItem && audioPlayer.isLoading ? (
+              <View style={styles.mediaControlsContainer}>
+                <View style={styles.mediaIconArea}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 </View>
-              ) : (
-                <View style={styles.mediaControlsContainer}>
-                  <TouchableOpacity 
-                    style={[
-                      styles.mediaIconArea,
-                      !item.audioUrl && styles.mediaIconAreaDisabled
-                    ]}
-                    onPress={() => isCurrentItem && item.audioUrl && handlePlayPause(item.audioUrl)}
-                    disabled={!item.audioUrl}
-                  >
-                    {isCurrentItem && audioPlayer.isPlaying ? (
-                      <PauseIcon width={20} height={20} />
-                    ) : (
-                      <PlayIcon width={20} height={20} />
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[
-                      styles.mediaIconArea,
-                      !item.audioUrl && styles.mediaIconAreaDisabled,
-                      isCurrentItem && audioPlayer.isLoading && styles.mediaIconAreaDisabled
-                    ]}
-                    onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
-                    disabled={!item.audioUrl || (isCurrentItem && audioPlayer.isLoading)}
-                  >
-                    {isCurrentItem && audioPlayer.isMuted ? (
-                      <VolumeMutedIcon width={20} height={20} />
-                    ) : (
-                      <VolumeIcon width={20} height={20} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+                <View style={styles.mediaIconArea} />
+              </View>
+            ) : (
+              <View style={styles.mediaControlsContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.mediaIconArea,
+                    !item.audioUrl && styles.mediaIconAreaDisabled
+                  ]}
+                  onPress={() => isCurrentItem && item.audioUrl && handlePlayPause(item.audioUrl)}
+                  disabled={!item.audioUrl}
+                >
+                  {isCurrentItem && audioPlayer.isPlaying ? (
+                    <PauseIcon width={20} height={20} />
+                  ) : (
+                    <PlayIcon width={20} height={20} />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.mediaIconArea,
+                    !item.audioUrl && styles.mediaIconAreaDisabled,
+                    isCurrentItem && audioPlayer.isLoading && styles.mediaIconAreaDisabled
+                  ]}
+                  onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
+                  disabled={!item.audioUrl || (isCurrentItem && audioPlayer.isLoading)}
+                >
+                  {isCurrentItem && audioPlayer.isMuted ? (
+                    <VolumeMutedIcon width={20} height={20} />
+                  ) : (
+                    <VolumeIcon width={20} height={20} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
+      </View>
+    );
+
+    return (
+      <View style={styles.carouselItemContainer}>
+        {isLocked ? (
+          <TouchableOpacity
+            style={styles.cardTouchable}
+            activeOpacity={0.9}
+            onPress={() => setSubscriptionPopupVisible(true)}
+          >
+            {cardContent}
+          </TouchableOpacity>
+        ) : (
+          cardContent
+        )}
       </View>
     );
   };
@@ -388,6 +430,12 @@ export const FortyDay = () => {
         )}
         </Animated.ScrollView>
       </Animated.View>
+
+      <SubscriptionPopup
+        isVisible={subscriptionPopupVisible}
+        onClose={() => setSubscriptionPopupVisible(false)}
+        onSubscribeSuccess={() => setSubscriptionPopupVisible(false)}
+      />
     </View>
   );
 };
@@ -497,6 +545,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 1,
   },
+  cardOverlayLocked: {
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  cardTouchable: {
+    flex: 1,
+  },
   cardContentWrapper: {
     flex: 1,
     zIndex: 2,
@@ -507,6 +561,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   flagButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockIconBadge: {
     width: 42,
     height: 42,
     borderRadius: 8,
@@ -529,6 +591,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Cinzel_400Regular',
     fontSize: 76,
     color: '#fff',
+  },
+  dayTextLocked: {
+    color: '#9CA3AF',
   },
   completionText: {
     fontFamily: 'Roboto_400Regular',
@@ -564,6 +629,18 @@ const styles = StyleSheet.create({
   },
   mediaIconAreaDisabled: {
     opacity: 0.3,
+  },
+  mediaControlsLocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  lockedHint: {
+    fontFamily: 'Roboto_400Regular',
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginLeft: 8,
   },
   tasksSection: {
     paddingHorizontal: 20,

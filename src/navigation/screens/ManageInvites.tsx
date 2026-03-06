@@ -95,7 +95,7 @@ export const ManageInvites: React.FC = () => {
   const [invitationToDelete, setInvitationToDelete] = useState<Invitation | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const MAX_INVITES = 3;
+  const MAX_INVITES = 2;
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
 

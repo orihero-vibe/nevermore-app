@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const PURPOSE_STORAGE_KEY = '@nevermore:user_purpose';
 
 type InputState = 'default' | 'error' | 'success' | 'checking';
+type PurposeType = 'seek-help' | 'help-someone';
 
 interface UseNicknameReturn {
   nickname: string;
@@ -17,6 +18,7 @@ interface UseNicknameReturn {
   saveNickname: () => Promise<void>;
   skipNickname: () => Promise<void>;
   isNextEnabled: boolean;
+  storedPurpose: PurposeType | null;
 }
 
 export function useNickname(): UseNicknameReturn {
@@ -24,7 +26,16 @@ export function useNickname(): UseNicknameReturn {
   const [inputState, setInputState] = useState<InputState>('default');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [storedPurpose, setStoredPurpose] = useState<PurposeType | null>(null);
   const { user } = useAuthStore();
+
+  useEffect(() => {
+    AsyncStorage.getItem(PURPOSE_STORAGE_KEY).then((value) => {
+      if (value === 'seek-help' || value === 'help-someone') {
+        setStoredPurpose(value);
+      }
+    });
+  }, []);
 
   const checkNicknameAvailability = useCallback(async (value: string) => {
     if (!value.trim()) {
@@ -143,5 +154,6 @@ export function useNickname(): UseNicknameReturn {
     saveNickname,
     skipNickname,
     isNextEnabled: isNextEnabled as boolean,
+    storedPurpose,
   };
 }

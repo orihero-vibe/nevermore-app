@@ -93,7 +93,7 @@ export function Purpose() {
                   style={styles.cardImage}
                   resizeMode="cover"
                 />
-                <Text style={styles.cardText}>I AM HERE TO{'\n'}SEEK HELP</Text>
+                <Text style={styles.cardText}>I'M HERE FOR{'\n'}SOBRIETY</Text>
                 {selectedPurpose === 'seek-help' && (
                   <View style={styles.checkmarkContainer}>
                     <CheckIcon color="#000000" />

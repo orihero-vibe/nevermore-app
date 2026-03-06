@@ -58,6 +58,12 @@ class InvitationService {
         throw new Error('User must be authenticated to send invitations');
       }
 
+      const myInvitations = await this.getMyInvitations();
+      const pendingCount = myInvitations.filter(inv => inv.status === 'pending').length;
+      if (pendingCount >= 2) {
+        throw new Error('You can only have up to 2 pending invitations. Please wait for some to be accepted or remove existing ones.');
+      }
+
       const invitationToken = ID.unique();
 
       const deepLink = `https://nevermore-admin-app.vercel.app/invite?token=${invitationToken}`;

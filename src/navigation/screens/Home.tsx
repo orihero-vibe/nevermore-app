@@ -25,15 +25,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MenuIcon from '../../assets/icons/menu';
 import ChevronDownIcon from '../../assets/icons/chevron-down';
 import { TemptationBottomSheet } from '../../components/TemptationBottomSheet';
+import { SubscriptionPopup } from '../../components/SubscriptionPopup';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { useCategories } from '../../hooks/useCategories';
 import { useContent } from '../../hooks/useContent';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { isTemptationFree } from '../../utils/contentAccess';
 import type { Category } from '../../services/category.service';
 
-interface TemptationItem {
+export interface TemptationItem {
   id: string;
   title: string;
   selected?: boolean;
+  /** True when this temptation is free (no subscription). */
+  isFree?: boolean;
 }
 
 type RootStackParamList = {
@@ -51,7 +56,9 @@ export default function Home() {
   const { categories, loading, error, getCategoryName } = useCategories();
   const { content: allContent, loading: contentLoading } = useContent();
 
+  const { isSubscribed } = useSubscriptionStore();
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [subscriptionPopupVisible, setSubscriptionPopupVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedTemptation, setSelectedTemptation] = useState<string>('');
   const [categoryContent, setCategoryContent] = useState<Record<string, TemptationItem[]>>({});
@@ -68,18 +75,24 @@ export default function Home() {
 
     const contentByCategory: Record<string, TemptationItem[]> = {};
 
-    categories.forEach((category) => {
+    categories.forEach((category, categoryIndex) => {
       const categoryItems = allContent
         .filter((item) => {
-          const categoryId = typeof item.category === 'string' 
-            ? item.category 
+          const categoryId = typeof item.category === 'string'
+            ? item.category
             : item.category?.$id;
           return categoryId === category.$id;
         })
-        .map((item, index) => ({
+        .map((item, itemIndex) => ({
           id: item.$id,
           title: item.title,
-          selected: index === 0,
+          selected: itemIndex === 0,
+          isFree: isTemptationFree(
+            item.$id,
+            category,
+            categoryIndex,
+            itemIndex
+          ),
         }));
 
       const categoryName = getCategoryName(category);
@@ -93,7 +106,6 @@ export default function Home() {
     categoryScales.value[index] = withTiming(0.98, { duration: 100 }, () => {
       categoryScales.value[index] = withTiming(1, { duration: 100 });
     });
-    
     runOnJS(setSelectedCategory)(category);
     runOnJS(setBottomSheetVisible)(true);
   };
@@ -113,6 +125,10 @@ export default function Home() {
   };
 
   const handleNavigateToDetails = (item: TemptationItem) => {
+    if (!isSubscribed && !item.isFree) {
+      setSubscriptionPopupVisible(true);
+      return;
+    }
     navigation.navigate(ScreenNames.TEMPTATION_DETAILS, {
       contentId: item.id,
       temptationTitle: item.title,
@@ -233,26 +249,24 @@ export default function Home() {
             <Text style={styles.titleText}>40 TEMPTATIONS</Text>
           </View>
 
-          {categories.map((cat, i) => {
-            return (
-              <TouchableOpacity
-                key={cat.$id}
-                style={styles.categoryCard}
-                activeOpacity={0.8}
-                onPress={() => handleCategoryPress(cat, i)}
-                disabled={bottomSheetVisible}
-              >
-                <BlurView experimentalBlurMethod={'none'} intensity={25} style={styles.blurContainer} tint="dark">
-                  <View style={styles.cardContent}>
-                    <Text style={styles.categoryText}>{getCategoryName(cat)}</Text>
-                    <View style={styles.arrowButton}>
-                      <ChevronDownIcon />
-                    </View>
+          {categories.map((cat, i) => (
+            <TouchableOpacity
+              key={cat.$id}
+              style={styles.categoryCard}
+              activeOpacity={0.8}
+              onPress={() => handleCategoryPress(cat, i)}
+              disabled={bottomSheetVisible}
+            >
+              <BlurView experimentalBlurMethod={'none'} intensity={25} style={styles.blurContainer} tint="dark">
+                <View style={styles.cardContent}>
+                  <Text style={styles.categoryText}>{getCategoryName(cat)}</Text>
+                  <View style={styles.arrowButton}>
+                    <ChevronDownIcon />
                   </View>
-                </BlurView>
-              </TouchableOpacity>
-            );
-          })}
+                </View>
+              </BlurView>
+            </TouchableOpacity>
+          ))}
         </Animated.ScrollView>
       </Animated.View>
 
@@ -266,6 +280,12 @@ export default function Home() {
           onNavigate={handleNavigateToDetails}
         />
       </View>
+
+      <SubscriptionPopup
+        isVisible={subscriptionPopupVisible}
+        onClose={() => setSubscriptionPopupVisible(false)}
+        onSubscribeSuccess={() => setSubscriptionPopupVisible(false)}
+      />
     </View>
   );
 }

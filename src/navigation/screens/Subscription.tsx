@@ -19,38 +19,49 @@ import {
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import CheckmarkIcon from '../../assets/icons/checkmark';
 import { Button } from '../../components/Button';
-import { SecondaryButton } from '../../components/SecondaryButton';
 import { ScreenNames } from '../../constants/ScreenNames';
-import { useOnboardingStore } from '../../store/onboardingStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { getIAPProductIds } from '../../services/iap.service';
 
-type PlanType = 'monthly' | 'plan2';
+type PlanType = 'monthly' | 'yearly';
 
 export function Subscription() {
   const navigation = useNavigation();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
-  const { completeOnboarding } = useOnboardingStore();
+  const {
+    isSubscribed,
+    isLoading,
+    error,
+    purchaseSubscription,
+    restorePurchases,
+    setError,
+  } = useSubscriptionStore();
 
-  const handleSubscribe = () => {
-    // TODO: Handle subscription logic
-    console.log('Subscribing to plan:', selectedPlan);
-    completeOnboarding();
-    navigation.navigate(ScreenNames.HOME_TABS);
+  const handleSubscribe = async () => {
+    setError(null);
+    const productIds = getIAPProductIds();
+    const productId = productIds[selectedPlan];
+    const success = await purchaseSubscription(productId);
+    if (success) {
+      navigation.navigate(ScreenNames.HOME_TABS);
+    }
   };
 
-  const handleSkip = () => {
-    // TODO: Handle skip logic
-    console.log('Skip subscription');
-    completeOnboarding();
-    navigation.navigate(ScreenNames.HOME_TABS);
+  const handleRestore = async () => {
+    setError(null);
+    const success = await restorePurchases();
+    if (success) {
+      navigation.navigate(ScreenNames.HOME_TABS);
+    }
   };
 
   const benefits = [
-    'Benefits',
-    'Benefits',
-    'Benefits',
-    'Benefits',
+    'Full access to all temptations',
+    'Full 40-day journey',
+    'Cancel anytime',
+    'New content as we add it',
   ];
 
   const renderPlanCard = (
@@ -59,12 +70,14 @@ export function Subscription() {
     price: string,
     isSelected: boolean
   ) => {
-    const planLabel = planType === 'monthly' ? 'Monthly' : 'Plan 2';
-    
+    const planLabel = planType === 'monthly' ? 'Monthly' : 'Yearly';
+    const isYearly = planType === 'yearly';
+
     return (
       <TouchableOpacity
-        style={[styles.planCard]}
+        style={[styles.planCard, isSelected && styles.planCardSelected]}
         onPress={() => setSelectedPlan(planType)}
+        disabled={isLoading}
       >
         <ImageBackground
           source={require('../../assets/card-bg.png')}
@@ -94,7 +107,10 @@ export function Subscription() {
             
             <View style={styles.priceContainer}>
               <Text style={styles.price}>{price}</Text>
-              <Text style={styles.priceUnit}>per month</Text>
+              <Text style={styles.priceUnit}>{isYearly ? 'per year' : 'per month'}</Text>
+              {isYearly && (
+                <Text style={styles.priceHint}>~$3.75 / month equivalent</Text>
+              )}
             </View>
           </View>
         </View>
@@ -132,29 +148,44 @@ export function Subscription() {
               Try out our Monthly Plan for 30 days free. Cancel anytime.
             </Text>
 
-            {/* Subscription Plans */}
-            <View style={styles.plansContainer}>
-              {renderPlanCard('monthly', 'MONTHLY', '$3.99', selectedPlan === 'monthly')}
-              {renderPlanCard('plan2', 'PLAN 2', '$4.99', selectedPlan === 'plan2')}
-            </View>
-          </ScrollView>
+            {isSubscribed ? (
+              <View style={styles.subscribedContainer}>
+                <Text style={styles.subscribedText}>You have an active subscription.</Text>
+                <Text style={styles.subscribedSubtext}>You have full access to all content.</Text>
+              </View>
+            ) : (
+              <>
+                {/* Subscription Plans */}
+                <View style={styles.plansContainer}>
+                  {renderPlanCard('monthly', 'MONTHLY', '$4.99', selectedPlan === 'monthly')}
+                  {renderPlanCard('yearly', 'YEARLY', '$44.99', selectedPlan === 'yearly')}
+                </View>
 
-          {/* Buttons */}
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Subscribe"
-              onPress={handleSubscribe}
-              variant="primary"
-              size="medium"
-              style={styles.subscribeButton}
-            />
-            <SecondaryButton
-              title="Skip"
-              onPress={handleSkip}
-              size="medium"
-              style={styles.skipButton}
-            />
-          </View>
+                {error ? (
+                  <Text style={styles.errorText}>{error}</Text>
+                ) : null}
+
+                {/* Buttons */}
+                <View style={styles.buttonContainer}>
+                  <Button
+                    title={isLoading ? 'Processing...' : 'Subscribe'}
+                    onPress={handleSubscribe}
+                    variant="primary"
+                    size="medium"
+                    style={styles.subscribeButton}
+                    disabled={isLoading}
+                  />
+                  <TouchableOpacity
+                    style={styles.restoreButton}
+                    onPress={handleRestore}
+                    disabled={isLoading}
+                  >
+                    <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </ScrollView>
         </SafeAreaView>
     </View>
   );
@@ -226,6 +257,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#333333',
+  },
+  planCardSelected: {
+    borderColor: '#8B5CF6',
+    borderWidth: 1.5,
   },
   planHeader: {
     backgroundColor: '#8B5CF6',
@@ -317,6 +352,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto_400Regular',
     marginTop: 2,
   },
+  priceHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontFamily: 'Roboto_400Regular',
+    marginTop: 2,
+  },
   buttonContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -324,7 +365,33 @@ const styles = StyleSheet.create({
   subscribeButton: {
     marginBottom: 12,
   },
-  skipButton: {
+  restoreButton: {
     alignItems: 'center',
+    paddingVertical: 12,
+  },
+  restoreButtonText: {
+    color: '#8B5CF6',
+    fontSize: 14,
+    fontFamily: 'Roboto_500Medium',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#ff6b6b',
+    marginBottom: 12,
+    fontFamily: 'Roboto_400Regular',
+  },
+  subscribedContainer: {
+    paddingVertical: 24,
+  },
+  subscribedText: {
+    fontSize: 18,
+    color: '#ffffff',
+    fontFamily: 'Roboto_600SemiBold',
+    marginBottom: 8,
+  },
+  subscribedSubtext: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontFamily: 'Roboto_400Regular',
   },
 });

@@ -33,6 +33,7 @@ export function Nickname() {
     saveNickname,
     skipNickname,
     isNextEnabled,
+    storedPurpose,
   } = useNickname();
   const { setCurrentStep } = useOnboardingStore();
   
@@ -83,6 +84,11 @@ export function Nickname() {
             state={mappedInputState}
             errorMessage={errorMessage}
           />
+          {storedPurpose === 'help-someone' && (
+            <Text style={styles.supportDescription}>
+              We're really glad you're here to support someone you care about. You can listen to the 40 Temptations and follow the 40-Day Journey to understand the daily steps your loved one is taking — and how you can support them along the way.
+            </Text>
+          )}
         </View>
 
         <View style={styles.buttonContainer}>
@@ -149,6 +155,14 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     fontFamily: 'Cinzel_600SemiBold',
     textAlign: 'center',
+  },
+  supportDescription: {
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
+    marginTop: 24,
   },
   buttonContainer: {
     paddingHorizontal: 20,
