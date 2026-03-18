@@ -140,6 +140,13 @@ export function SignUp() {
                 {isEmailValid && (
                   <View style={styles.requirementsContainer}>
                     <View style={styles.requirementItem}>
+                      {requirements.minLength ? <CheckIcon stroke="#8b5cf6" /> : <View style={styles.dotIcon} />}
+                      <Text style={[styles.requirementText, requirements.minLength && styles.requirementTextChecked]}>
+                        At least 8 characters
+                      </Text>
+                    </View>
+
+                    <View style={styles.requirementItem}>
                       {requirements.capital ? <CheckIcon stroke="#8b5cf6" /> : <View style={styles.dotIcon} />}
                       <Text style={[styles.requirementText, requirements.capital && styles.requirementTextChecked]}>
                         At least 1 capital letter
@@ -170,8 +177,9 @@ export function SignUp() {
                 )}
 
                 <TouchableOpacity
-                  style={[styles.termsContainer, {opacity: agreeToTerms ? 1 : 0.6}]}
+                  style={styles.termsContainer}
                   onPress={() => setAgreeToTerms(!agreeToTerms)}
+                  activeOpacity={1}
                 >
                   <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
                     {agreeToTerms && (
@@ -181,11 +189,19 @@ export function SignUp() {
                   <View style={styles.termsTextContainer}>
                     <Text style={styles.termsText}>
                       I agree to the{' '}
-                      <Text style={styles.termsLink} onPress={handleTermsPress}>
+                      <Text
+                        style={styles.termsLink}
+                        onPress={handleTermsPress}
+                        suppressHighlighting
+                      >
                         Terms & Conditions
                       </Text>
                       {' '}and{' '}
-                      <Text style={styles.termsLink} onPress={handlePrivacyPress}>
+                      <Text
+                        style={styles.termsLink}
+                        onPress={handlePrivacyPress}
+                        suppressHighlighting
+                      >
                         Privacy Policy
                       </Text>
                     </Text>
@@ -203,7 +219,15 @@ export function SignUp() {
                   onPress={handleSignUp}
                   variant="primary"
                   size="medium"
-                  disabled={isLoading || !requirements.capital || !requirements.numerical || !requirements.special || !requirements.match || !agreeToTerms}
+                  disabled={
+                    isLoading ||
+                    !requirements.minLength ||
+                    !requirements.capital ||
+                    !requirements.numerical ||
+                    !requirements.special ||
+                    !requirements.match ||
+                    !agreeToTerms
+                  }
                   style={styles.createAccountButton}
                 />
               </View>
