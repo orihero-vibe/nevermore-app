@@ -238,6 +238,7 @@ export function InviteSend() {
               onPress={handleSkip}
               size="medium"
               style={styles.skipButton}
+              textStyle={styles.skipButtonText}
             />
           </View>
         </SafeAreaView>
@@ -340,6 +341,9 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     alignItems: 'center',
+  },
+  skipButtonText: {
+    color: '#8B5CF6',
   },
   loadingContainer: {
     flex: 1,

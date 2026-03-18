@@ -100,13 +100,12 @@ export function SignIn() {
 
               <View style={styles.optionsContainer}>
                 <TouchableOpacity
-                  style={[styles.rememberMeContainer, {opacity: rememberMe ? 1 : 0.5}]}
+                  style={styles.rememberMeContainer}
                   onPress={() => setRememberMe(!rememberMe)}
+                  activeOpacity={1}
                 >
                   <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                    {rememberMe && (
-                      <CheckIcon color="#ffffff" opacity={1} />
-                    )}
+                    <CheckIcon color="#ffffff" opacity={rememberMe ? 1 : 0} />
                   </View>
                   <Text style={styles.rememberMeText}>Remember me</Text>
                 </TouchableOpacity>

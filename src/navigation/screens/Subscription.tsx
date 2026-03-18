@@ -255,12 +255,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     borderRadius: 20,
     marginBottom: 16,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#333333',
   },
   planCardSelected: {
     borderColor: '#8B5CF6',
-    borderWidth: 1.5,
   },
   planHeader: {
     backgroundColor: '#8B5CF6',

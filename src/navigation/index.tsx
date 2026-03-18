@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { ScreenNames } from '../constants/ScreenNames';
@@ -367,10 +367,25 @@ const linking = {
   },
 };
 
+const ONBOARDING_STACK_ORDER: string[] = [
+  ScreenNames.PERMISSION,
+  ScreenNames.PURPOSE,
+  ScreenNames.NICKNAME,
+  ScreenNames.INVITE,
+  ScreenNames.INVITE_SEND,
+];
+
+function buildOnboardingStackRoutes(currentStep: string) {
+  const idx = ONBOARDING_STACK_ORDER.indexOf(currentStep);
+  const names = idx >= 0 ? ONBOARDING_STACK_ORDER.slice(0, idx + 1) : [currentStep];
+  return names.map((name) => ({ name }));
+}
+
 export function Navigation(props?: any) {
   const { isAuthenticated } = useAuthStore();
   const { isOnboardingComplete, currentOnboardingStep, completeOnboarding } = useOnboardingStore();
   const navigationRef = useNavigationContainerRef();
+  const didRestoreOnboardingStackRef = useRef(false);
 
   // Determine initial route based on auth and onboarding status
   const getInitialRouteName = (): string => {
@@ -383,20 +398,38 @@ export function Navigation(props?: any) {
       return ScreenNames.HOME_TABS;
     }
 
-    // If authenticated but onboarding not complete:
-    // - If we have a saved step, resume from there
-    // - Otherwise, start from Permission (beginning of onboarding)
-    // This handles new users who just signed up
-    if (currentOnboardingStep) {
-      return currentOnboardingStep;
-    }
-
-    // No saved step and not complete = new user who just signed up
-    // Start onboarding from Permission
+    // Authenticated but onboarding not complete: always start the onboarding stack
+    // from the beginning. If we have a saved step, we'll restore the full stack
+    // (including history) after the navigator is ready.
     return ScreenNames.PERMISSION;
   };
 
   const initialRouteName = getInitialRouteName();
+
+  const onboardingResetState = useMemo(() => {
+    if (!isAuthenticated || isOnboardingComplete || !currentOnboardingStep) return null;
+    const routes = buildOnboardingStackRoutes(currentOnboardingStep);
+    return { index: routes.length - 1, routes };
+  }, [isAuthenticated, isOnboardingComplete, currentOnboardingStep]);
+
+  // Rehydrate onboarding stack history on cold start / relaunch.
+  // Without this, resuming directly to a deep onboarding screen creates a stack
+  // with no previous routes, so iOS back/gesture can't navigate.
+  useEffect(() => {
+    if (!onboardingResetState) return;
+    if (!navigationRef.isReady()) return;
+    if (didRestoreOnboardingStackRef.current) return;
+
+    navigationRef.reset(onboardingResetState as any);
+    didRestoreOnboardingStackRef.current = true;
+  }, [navigationRef, onboardingResetState]);
+
+  // If onboarding becomes complete (or user logs out), allow future restores.
+  useEffect(() => {
+    if (!isAuthenticated || isOnboardingComplete || !currentOnboardingStep) {
+      didRestoreOnboardingStackRef.current = false;
+    }
+  }, [isAuthenticated, isOnboardingComplete, currentOnboardingStep]);
 
   // Mark onboarding complete if user signs in (existing users skip onboarding)
   // Only do this if they're going to HOME_TABS and onboarding isn't already marked complete
@@ -408,7 +441,12 @@ export function Navigation(props?: any) {
   }, [isAuthenticated, initialRouteName, isOnboardingComplete, currentOnboardingStep, completeOnboarding]);
 
   return (
-    <NavigationContainer ref={navigationRef} linking={linking} {...props}>
+    <NavigationContainer
+      ref={navigationRef}
+      linking={linking}
+      initialState={(onboardingResetState as any) ?? undefined}
+      {...props}
+    >
       <RootStack initialRouteName={initialRouteName} />
     </NavigationContainer>
   );
