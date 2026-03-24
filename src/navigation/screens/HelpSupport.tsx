@@ -9,6 +9,8 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import {
@@ -141,86 +143,94 @@ export const HelpSupport: React.FC = () => {
       </View>
 
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
-            <ChevronLeftIcon width={24} height={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Nevermore</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
         >
-          {/* Title */}
-          <Text style={styles.pageTitle}>How Can We Help You?</Text>
-
-          {/* Select reason section */}
-          <Text style={styles.sectionLabel}>Select reason(s):</Text>
-          
-          <View style={styles.checkboxList}>
-            {REASONS.map((reason) => (
-              <Checkbox
-                key={reason}
-                label={reason}
-                checked={selectedReason === reason}
-                onToggle={() => selectReason(reason)}
-              />
-            ))}
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+              activeOpacity={0.7}
+            >
+              <ChevronLeftIcon width={24} height={24} color="#ffffff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Nevermore</Text>
+            <View style={styles.headerSpacer} />
           </View>
 
-          {/* Description */}
-          <Text style={styles.description}>
-            Please tell us about the issue you are having and we will respond within 3-5 business days.
-          </Text>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          >
+            {/* Title */}
+            <Text style={styles.pageTitle}>How Can We Help You?</Text>
 
-          {/* Text Input */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Please give us as much detail about the problem you are experiencing."
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              multiline
-              maxLength={maxCharacters}
-              value={message}
-              onChangeText={setMessage}
-              textAlignVertical="top"
-            />
-            <Text style={styles.characterCount}>
-              {message.length}/{maxCharacters}
+            {/* Select reason section */}
+            <Text style={styles.sectionLabel}>Select reason(s):</Text>
+
+            <View style={styles.checkboxList}>
+              {REASONS.map((reason) => (
+                <Checkbox
+                  key={reason}
+                  label={reason}
+                  checked={selectedReason === reason}
+                  onToggle={() => selectReason(reason)}
+                />
+              ))}
+            </View>
+
+            {/* Description */}
+            <Text style={styles.description}>
+              Please tell us about the issue you are having and we will respond within 3-5 business days.
             </Text>
-          </View>
 
-          {/* Send Button */}
-          <TouchableOpacity
-            style={[styles.sendButton, isSubmitting && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            activeOpacity={0.8}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.sendButtonText}>Send</Text>
-            )}
-          </TouchableOpacity>
+            {/* Text Input */}
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Please give us as much detail about the problem you are experiencing."
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                multiline
+                maxLength={maxCharacters}
+                value={message}
+                onChangeText={setMessage}
+                textAlignVertical="top"
+                scrollEnabled
+              />
+              <Text style={styles.characterCount}>
+                {message.length}/{maxCharacters}
+              </Text>
+            </View>
 
-          {/* Cancel Button */}
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={handleCancel}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </ScrollView>
+            {/* Send Button */}
+            <TouchableOpacity
+              style={[styles.sendButton, isSubmitting && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              activeOpacity={0.8}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.sendButtonText}>Send</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Cancel Button */}
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancel}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
@@ -245,6 +255,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -271,7 +284,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 32,
-    paddingBottom: 40,
+    paddingBottom: 80,
   },
   pageTitle: {
     fontSize: 28,

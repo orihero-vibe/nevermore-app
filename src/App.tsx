@@ -11,6 +11,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Navigation } from './navigation';
 import { ExpoImageSplashScreen } from './components/ExpoImageSplashScreen';
 import { useAuthStore } from './store/authStore';
+import { useSubscriptionStore } from './store/subscriptionStore';
+import { iapService } from './services/iap.service';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -68,6 +70,14 @@ export function App() {
 
     if (cinzelFontsLoaded && robotoFontsLoaded && assetsLoaded) {
       initAuth();
+      iapService.init().then(() => {
+        iapService.setSubscriptionUpdater((value: boolean) => {
+          useSubscriptionStore.getState().setSubscribed(value);
+        });
+        iapService.checkSubscription().then((active) => {
+          useSubscriptionStore.getState().setSubscribed(active);
+        });
+      });
     }
   }, [cinzelFontsLoaded, robotoFontsLoaded, assetsLoaded, checkAuth]);
 

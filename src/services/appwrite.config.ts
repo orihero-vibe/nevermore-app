@@ -9,6 +9,8 @@ import {
   APPWRITE_WELCOME_QUOTE_COLLECTION_ID,
   APPWRITE_STORAGE_BUCKET_ID,
   APPWRITE_PLATFORM,
+  IAP_PRODUCT_ID_MONTHLY,
+  IAP_PRODUCT_ID_YEARLY,
 } from '@env';
 
 const appwriteConfig = {
@@ -21,6 +23,8 @@ const appwriteConfig = {
   welcomeQuoteCollectionId: APPWRITE_WELCOME_QUOTE_COLLECTION_ID || '',
   storageBucketId: APPWRITE_STORAGE_BUCKET_ID || '',
   platform: APPWRITE_PLATFORM || '',
+  iapProductIdMonthly: IAP_PRODUCT_ID_MONTHLY || '',
+  iapProductIdYearly: IAP_PRODUCT_ID_YEARLY || '',
 };
 
 

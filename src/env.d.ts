@@ -11,4 +11,8 @@ declare module '@env' {
   export const APPWRITE_WELCOME_QUOTE_COLLECTION_ID: string;
   export const APPWRITE_PLATFORM: string;
   export const APPWRITE_STORAGE_BUCKET_ID: string;
+  /** In-App Purchase: product ID for monthly subscription (must match App Store Connect / Google Play Console). Optional; if unset, placeholder is used. */
+  export const IAP_PRODUCT_ID_MONTHLY: string;
+  /** In-App Purchase: product ID for yearly subscription (second plan; must match App Store Connect / Google Play Console). Optional; if unset, placeholder is used. */
+  export const IAP_PRODUCT_ID_YEARLY: string;
 }

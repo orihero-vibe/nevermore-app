@@ -2,15 +2,23 @@ import { Query } from 'react-native-appwrite';
 import { tablesDB } from './appwrite.config';
 import { APPWRITE_DATABASE_ID, APPWRITE_CATEGORY_COLLECTION_ID } from '@env';
 
+/**
+ * Category row from Appwrite.
+ * For free-content gating: up to 3 categories may set freeTemptationContentId to a content $id;
+ * that temptation is free in this category.
+ */
 export interface Category {
   $id: string;
   name?: string;
   title?: string;
   label?: string;
   order?: number;
+  /** Content $id that is free in this category (max 3 categories may have this set). */
+  freeTemptationContentId?: string | null;
+  /** Optional; true when freeTemptationContentId is set (useful in admin UI). */
+  isFreeCategory?: boolean;
   $createdAt?: string;
   $updatedAt?: string;
-  // Add other fields as needed based on your Appwrite schema
   [key: string]: unknown;
 }
 

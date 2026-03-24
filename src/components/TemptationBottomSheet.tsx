@@ -1,22 +1,20 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ImageBackground } from 'react-native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withTiming, 
-  withSpring,
-  withSequence,
-  interpolate,
-  Extrapolate,
-  runOnJS
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
 } from 'react-native-reanimated';
 import cardBg from '../assets/card-bg.png';
+import LockIcon from '../assets/icons/lock';
+import { useSubscriptionStore } from '../store/subscriptionStore';
 
 interface TemptationItem {
   id: string;
   title: string;
   selected?: boolean;
+  isFree?: boolean;
 }
 
 interface TemptationBottomSheetProps {
@@ -32,7 +30,8 @@ const AnimatedTemptationItem: React.FC<{
   item: TemptationItem;
   onPress: (item: TemptationItem) => void;
   index: number;
-}> = ({ item, onPress, index }) => {
+  isLocked: boolean;
+}> = ({ item, onPress, index, isLocked }) => {
   const fadeAnim = useSharedValue(0);
   const scaleAnim = useSharedValue(0.8);
   const translateYAnim = useSharedValue(30);
@@ -59,7 +58,6 @@ const AnimatedTemptationItem: React.FC<{
     pressScale.value = withTiming(0.95, { duration: 50 }, () => {
       pressScale.value = withTiming(1, { duration: 100 });
     });
-    
     setTimeout(() => {
       onPress(item);
     }, 100);
@@ -91,10 +89,16 @@ const AnimatedTemptationItem: React.FC<{
         activeOpacity={1}
       >
         <View style={styles.unselectedItemBackground}>
-          <Text style={styles.unselectedItemText}>{item.title}</Text>
+          <Text style={[styles.unselectedItemText, isLocked && styles.lockedItemText]} numberOfLines={1}>
+            {item.title}
+          </Text>
+          {isLocked && (
+            <View style={styles.lockIconWrap}>
+              <LockIcon width={18} height={18} color="#9CA3AF" />
+            </View>
+          )}
         </View>
-        
-        <Animated.View 
+        <Animated.View
           style={[styles.animatedBackground, backgroundAnimatedStyle]}
           pointerEvents="none"
         >
@@ -104,6 +108,11 @@ const AnimatedTemptationItem: React.FC<{
             imageStyle={styles.selectedItemImageStyle}
           >
             <Text style={styles.selectedItemText}>{item.title}</Text>
+            {isLocked && (
+              <View style={styles.lockIconWrapSelected}>
+                <LockIcon width={18} height={18} color="rgba(255,255,255,0.8)" />
+              </View>
+            )}
           </ImageBackground>
         </Animated.View>
       </TouchableOpacity>
@@ -120,6 +129,7 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
   onNavigate,
 }) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const { isSubscribed } = useSubscriptionStore();
 
   const snapPoints = useMemo(() => ['75%'], []);
 
@@ -150,16 +160,18 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
     }
   }, [onClose]);
 
-  const handleItemPress = useCallback((item: TemptationItem) => {
-    onItemSelect(item);
-    
-    setTimeout(() => {
-      if (onNavigate) {
-        onNavigate(item);
-      }
-      bottomSheetRef.current?.close();
-    }, 300);
-  }, [onItemSelect, onNavigate]);
+  const handleItemPress = useCallback(
+    (item: TemptationItem) => {
+      onItemSelect(item);
+      setTimeout(() => {
+        if (onNavigate) {
+          onNavigate(item);
+        }
+        bottomSheetRef.current?.close();
+      }, 300);
+    },
+    [onItemSelect, onNavigate]
+  );
 
   React.useEffect(() => {
     if (isVisible) {
@@ -202,6 +214,7 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
               item={item}
               index={index}
               onPress={handleItemPress}
+              isLocked={!isSubscribed && !item.isFree}
             />
           ))}
         </View>
@@ -281,6 +294,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 16,
+    position: 'relative',
   },
   selectedItemImageStyle: {
     borderRadius: 16,
@@ -298,11 +312,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 16,
+    position: 'relative',
   },
   unselectedItemText: {
     color: '#FFFFFF',
     fontSize: 14,
     textAlign: 'center',
     fontFamily: 'Cinzel_400Regular',
+    paddingHorizontal: 36,
+  },
+  lockedItemText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  lockIconWrap: {
+    position: 'absolute',
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  lockIconWrapSelected: {
+    position: 'absolute',
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
 });

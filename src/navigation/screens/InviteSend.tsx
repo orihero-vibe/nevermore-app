@@ -32,7 +32,7 @@ export function InviteSend() {
   const navigation = useNavigation<any>();
   const [emails, setEmails] = useState<string[]>(['']);
   const [isLoading, setIsLoading] = useState(false);
-  const { setCurrentStep } = useOnboardingStore();
+  const { completeOnboarding } = useOnboardingStore();
   const { checkAuth, isAuthenticated } = useAuthStore();
   
   const width = Dimensions.get('window').width;
@@ -50,7 +50,7 @@ export function InviteSend() {
   };
 
   const addAnotherEmail = () => {
-    if (emails.length < 3) {
+    if (emails.length < 2) {
       setEmails([...emails, '']);
     }
   };
@@ -124,8 +124,8 @@ export function InviteSend() {
           `Invitations sent successfully to ${validEmails.length} ${validEmails.length === 1 ? 'friend' : 'friends'}!`,
           'Invitations Sent'
       );
-      setCurrentStep(ScreenNames.SUBSCRIPTION);
-      navigation.navigate(ScreenNames.SUBSCRIPTION);
+      completeOnboarding();
+      navigation.navigate(ScreenNames.HOME_TABS);
     
     } catch (error: unknown) {
       showAppwriteError(error, {
@@ -138,8 +138,8 @@ export function InviteSend() {
   };
 
   const handleSkip = () => {
-    setCurrentStep(ScreenNames.SUBSCRIPTION);
-    navigation.navigate(ScreenNames.SUBSCRIPTION);
+    completeOnboarding();
+    navigation.navigate(ScreenNames.HOME_TABS);
   };
 
   const isNextEnabled = emails.some(email => email.trim() !== '' && validateEmail(email.trim()));
@@ -182,7 +182,7 @@ export function InviteSend() {
 
           <View style={styles.content}>
             <Text style={styles.title}>
-              INVITE UP TO THREE (3) FRIENDS OR LOVED ONES TO JOIN YOU ON YOUR JOURNEY.
+              INVITE UP TO TWO (2) FRIENDS OR LOVED ONES TO JOIN YOU ON YOUR JOURNEY.
             </Text>
             
             <View style={styles.emailSection}>
@@ -212,7 +212,7 @@ export function InviteSend() {
                 </View>
               ))}
 
-              {emails.length < 3 && (
+              {emails.length < 2 && (
                 <TouchableOpacity
                   onPress={addAnotherEmail}
                   style={styles.addAnotherContainer}
@@ -238,6 +238,7 @@ export function InviteSend() {
               onPress={handleSkip}
               size="medium"
               style={styles.skipButton}
+              textStyle={styles.skipButtonText}
             />
           </View>
         </SafeAreaView>
@@ -340,6 +341,9 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     alignItems: 'center',
+  },
+  skipButtonText: {
+    color: '#8B5CF6',
   },
   loadingContainer: {
     flex: 1,

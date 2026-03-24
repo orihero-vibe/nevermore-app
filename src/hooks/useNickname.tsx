@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const PURPOSE_STORAGE_KEY = '@nevermore:user_purpose';
 
 type InputState = 'default' | 'error' | 'success' | 'checking';
+type PurposeType = 'seek-help' | 'help-someone';
 
 interface UseNicknameReturn {
   nickname: string;
@@ -17,18 +18,71 @@ interface UseNicknameReturn {
   saveNickname: () => Promise<void>;
   skipNickname: () => Promise<void>;
   isNextEnabled: boolean;
+  storedPurpose: PurposeType | null;
 }
 
 export function useNickname(): UseNicknameReturn {
   const [nickname, setNickname] = useState('');
+  const [existingNickname, setExistingNickname] = useState<string | null>(null);
   const [inputState, setInputState] = useState<InputState>('default');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [storedPurpose, setStoredPurpose] = useState<PurposeType | null>(null);
   const { user } = useAuthStore();
+
+  useEffect(() => {
+    AsyncStorage.getItem(PURPOSE_STORAGE_KEY).then((value) => {
+      if (value === 'seek-help' || value === 'help-someone') {
+        setStoredPurpose(value);
+      }
+    });
+  }, []);
+
+  // Prefill nickname if it was already set previously.
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateExistingNickname = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser) return;
+
+        const userProfile = await userProfileService.getUserProfileByAuthId(currentUser.$id);
+        const saved = userProfile?.nickname?.trim();
+
+        if (cancelled) return;
+
+        if (saved) {
+          setExistingNickname(saved);
+          setNickname(saved);
+          setInputState('success');
+          setErrorMessage('');
+        } else {
+          setExistingNickname(null);
+        }
+      } catch (e) {
+        // If hydration fails we fall back to empty nickname;
+        // user can still set it manually.
+        if (!cancelled) setExistingNickname(null);
+      }
+    };
+
+    hydrateExistingNickname();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.$id]);
 
   const checkNicknameAvailability = useCallback(async (value: string) => {
     if (!value.trim()) {
       setInputState('default');
+      setErrorMessage('');
+      return;
+    }
+
+    // If user already owns this nickname, treat as available.
+    if (existingNickname && value.trim() === existingNickname) {
+      setInputState('success');
       setErrorMessage('');
       return;
     }
@@ -51,7 +105,7 @@ export function useNickname(): UseNicknameReturn {
       setInputState('error');
       setErrorMessage('Failed to check nickname availability. Please try again.');
     }
-  }, []);
+  }, [existingNickname]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -92,6 +146,8 @@ export function useNickname(): UseNicknameReturn {
         nickname: nickname.trim(),
         type: userType,
       });
+
+      setExistingNickname(nickname.trim());
 
       // Clear the purpose from storage after saving
       await AsyncStorage.removeItem(PURPOSE_STORAGE_KEY);
@@ -143,5 +199,6 @@ export function useNickname(): UseNicknameReturn {
     saveNickname,
     skipNickname,
     isNextEnabled: isNextEnabled as boolean,
+    storedPurpose,
   };
 }

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 
 interface PasswordRequirements {
+  minLength: boolean;
   capital: boolean;
   numerical: boolean;
   special: boolean;
@@ -22,12 +23,14 @@ export const useSignUp = () => {
 
   const validatePasswordRequirements = useCallback(
     (password: string, confirmPassword: string): PasswordRequirements => {
+      const hasMinLength = password.length >= 8;
       const hasCapital = /[A-Z]/.test(password);
       const hasNumerical = /\d/.test(password);
       const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
       const passwordsMatch = password === confirmPassword && password.length > 0;
 
       return {
+        minLength: hasMinLength,
         capital: hasCapital,
         numerical: hasNumerical,
         special: hasSpecial,
@@ -59,6 +62,13 @@ export const useSignUp = () => {
       }
 
       const requirements = validatePasswordRequirements(password, confirmPassword);
+
+      if (!requirements.minLength) {
+        return {
+          isValid: false,
+          error: 'Password must be at least 8 characters long.',
+        };
+      }
 
       if (!requirements.capital) {
         return {

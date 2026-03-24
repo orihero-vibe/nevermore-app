@@ -63,7 +63,7 @@ export default function TemptationDetails() {
   const insets = useSafeAreaInsets();
 
   const { contentId, temptationTitle, categoryId: routeCategoryId } = route.params;
-  
+
   const { 
     content, 
     loading 

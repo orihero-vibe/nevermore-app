@@ -3,9 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   StatusBar,
   Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -33,6 +37,7 @@ export function Nickname() {
     saveNickname,
     skipNickname,
     isNextEnabled,
+    storedPurpose,
   } = useNickname();
   const { setCurrentStep } = useOnboardingStore();
   
@@ -57,53 +62,65 @@ export function Nickname() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <Canvas style={styles.canvas}>
+      <Canvas style={styles.canvas} pointerEvents="none">
         <SkiaImage image={bg} x={0} y={0} width={width} height={height} fit="cover" />
       </Canvas>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <ArrowLeftIcon />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Nevermore</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <SafeAreaView style={styles.safeArea}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardAvoidingView}
+          >
+            <View style={styles.header}>
+              <TouchableOpacity onPress={() => navigation.goBack()}>
+                <ArrowLeftIcon />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Nevermore</Text>
+              <View style={styles.headerSpacer} />
+            </View>
 
-        <View style={styles.content}>
-          <Text style={styles.title}>WHAT SHOULD WE CALL YOU?</Text>
-          
-          <Input
-            label="Nickname"
-            placeholder="Example123"
-            value={nickname}
-            onChangeText={setNickname}
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoFocus={true}
-            state={mappedInputState}
-            errorMessage={errorMessage}
-          />
-        </View>
+            <View style={styles.content}>
+              <Text style={styles.title}>WHAT SHOULD WE CALL YOU?</Text>
+              
+              <Input
+                label="Nickname"
+                placeholder="Example123"
+                value={nickname}
+                onChangeText={setNickname}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus={true}
+                state={mappedInputState}
+                errorMessage={errorMessage}
+              />
+              {storedPurpose === 'help-someone' && (
+                <Text style={styles.supportDescription}>
+                  We're really glad you're here to support someone you care about. You can listen to the 40 Temptations and follow the 40-Day Journey to understand the daily steps your loved one is taking — and how you can support them along the way.
+                </Text>
+              )}
+            </View>
 
-        <View style={styles.buttonContainer}>
-          <Button
-            title={isLoading ? "Saving..." : "Next"}
-            onPress={handleNext}
-            variant="primary"
-            size="medium"
-            disabled={!isNextEnabled || isLoading}
-            style={styles.nextButton}
-          />
-          <SecondaryButton
-            title="Skip"
-            onPress={handleSkip}
-            size="medium"
-            disabled={isLoading}
-            style={styles.skipButton}
-            textStyle={styles.skipButtonText}
-          />
-        </View>
-      </SafeAreaView>
+            <View style={styles.buttonContainer}>
+              <Button
+                title={isLoading ? "Saving..." : "Next"}
+                onPress={handleNext}
+                variant="primary"
+                size="medium"
+                disabled={!isNextEnabled || isLoading}
+                style={styles.nextButton}
+              />
+              <SecondaryButton
+                title="Skip"
+                onPress={handleSkip}
+                size="medium"
+                disabled={isLoading}
+                style={styles.skipButton}
+                textStyle={styles.skipButtonText}
+              />
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
     </View>
   );
 }
@@ -121,6 +138,9 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   safeArea: {
+    flex: 1,
+  },
+  keyboardAvoidingView: {
     flex: 1,
   },
   header: {
@@ -149,6 +169,14 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     fontFamily: 'Cinzel_600SemiBold',
     textAlign: 'center',
+  },
+  supportDescription: {
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
+    marginTop: 24,
   },
   buttonContainer: {
     paddingHorizontal: 20,

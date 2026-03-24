@@ -21,6 +21,7 @@ import ChevronUpIcon from '../assets/icons/chevron-up';
 import ChevronDownIcon from '../assets/icons/chevron-down';
 import { ScreenNames } from '../constants/ScreenNames';
 import { useAuthStore } from '../store/authStore';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -68,6 +69,7 @@ export const CustomDrawerContent = (props: any) => {
   const { navigation } = props;
   const insets = useSafeAreaInsets();
   const [legalExpanded, setLegalExpanded] = useState(false);
+  const [showSignOutConfirmation, setShowSignOutConfirmation] = useState(false);
   const { signOut } = useAuthStore();
 
   const handleCloseDrawer = () => {
@@ -104,33 +106,22 @@ export const CustomDrawerContent = (props: any) => {
   };
 
   const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              navigation.dispatch(DrawerActions.closeDrawer());
-              await signOut();
-              navigation.reset({
-                index: 0,
-                routes: [{ name: ScreenNames.WELCOME }],
-              });
-            } catch (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    setShowSignOutConfirmation(true);
+  };
+
+  const handleConfirmSignOut = async () => {
+    try {
+      setShowSignOutConfirmation(false);
+      navigation.dispatch(DrawerActions.closeDrawer());
+      await signOut();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: ScreenNames.WELCOME }],
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
   };
 
   return (
@@ -205,6 +196,17 @@ export const CustomDrawerContent = (props: any) => {
           <Separator />
         </View>
       </DrawerContentScrollView>
+
+      <ConfirmationModal
+        visible={showSignOutConfirmation}
+        title="Sign Out"
+        description="Are you sure you want to sign out?"
+        cancelText="Cancel"
+        confirmText="Sign Out"
+        onCancel={() => setShowSignOutConfirmation(false)}
+        onConfirm={handleConfirmSignOut}
+        confirmButtonColor="#EF4444"
+      />
     </View>
   );
 };

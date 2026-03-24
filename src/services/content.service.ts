@@ -2,6 +2,12 @@ import { Query } from 'react-native-appwrite';
 import { tablesDB } from './appwrite.config';
 import { APPWRITE_DATABASE_ID, APPWRITE_CONTENT_COLLECTION_ID } from '@env';
 
+/**
+ * Content row from Appwrite.
+ * For free-content gating:
+ * - Journey: content.isFree (only Day 1–3 allowed in admin). App uses this for lock/access.
+ * - Temptations: free item per category is determined by Category.freeTemptationContentId.
+ */
 export interface Content {
   $id: string;
   title: string;
@@ -15,6 +21,8 @@ export interface Content {
   images?: string[];
   files?: string[];
   tasks?: string[];
+  /** If true, this content is free (no subscription). For journey: only Day 1–3 can be free. */
+  isFree?: boolean;
   $createdAt?: string;
   $updatedAt?: string;
   [key: string]: unknown;
