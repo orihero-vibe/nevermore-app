@@ -12,6 +12,8 @@ export enum ScreenNames {
   NICKNAME = 'Nickname',
   INVITE = 'Invite',
   INVITE_SEND = 'InviteSend',
+  TRIAL_WELCOME = 'TrialWelcome',
+  TRIAL_EXPIRED = 'TrialExpired',
   SUBSCRIPTION = 'Subscription',
   HOME_TABS = 'HomeTabs',
   PROFILE = 'Profile',

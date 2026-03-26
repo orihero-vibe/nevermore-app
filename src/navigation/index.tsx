@@ -21,6 +21,8 @@ import { Purpose } from './screens/Purpose';
 import { Nickname } from './screens/Nickname';
 import { Invite } from './screens/Invite';
 import { InviteSend } from './screens/InviteSend';
+import { TrialWelcome } from './screens/TrialWelcome';
+import { TrialExpired } from './screens/TrialExpired';
 import { Subscription } from './screens/Subscription';
 import TemptationDetails from './screens/TemptationDetails';
 import Transcript from './screens/Transcript';
@@ -37,6 +39,8 @@ import BookmarkIcon from '../assets/icons/bookmark';
 import BookmarkActiveIcon from '../assets/icons/bookmark-active';
 import { CustomDrawerContent } from '../components/DrawerMenu';
 import Home from './screens/Home';
+import { useSubscriptionStore } from '../store/subscriptionStore';
+import { useTrialStore } from '../store/trialStore';
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -244,6 +248,21 @@ function RootStack({ initialRouteName }: { initialRouteName: string }) {
         }}
       />
       <Stack.Screen
+        name={ScreenNames.TRIAL_WELCOME}
+        component={TrialWelcome}
+        options={{
+          title: 'Trial Welcome',
+        }}
+      />
+      <Stack.Screen
+        name={ScreenNames.TRIAL_EXPIRED}
+        component={TrialExpired}
+        options={{
+          title: 'Trial Expired',
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
         name={ScreenNames.SUBSCRIPTION}
         component={Subscription}
         options={{
@@ -373,6 +392,7 @@ const ONBOARDING_STACK_ORDER: string[] = [
   ScreenNames.NICKNAME,
   ScreenNames.INVITE,
   ScreenNames.INVITE_SEND,
+  ScreenNames.TRIAL_WELCOME,
 ];
 
 function buildOnboardingStackRoutes(currentStep: string) {
@@ -384,6 +404,9 @@ function buildOnboardingStackRoutes(currentStep: string) {
 export function Navigation(props?: any) {
   const { isAuthenticated } = useAuthStore();
   const { isOnboardingComplete, currentOnboardingStep, completeOnboarding } = useOnboardingStore();
+  const isSubscribed = useSubscriptionStore((s) => s.isSubscribed);
+  const trialStartDate = useTrialStore((s) => s.trialStartDate);
+  const isTrialExpired = useTrialStore((s) => s.isTrialExpired);
   const navigationRef = useNavigationContainerRef();
   const didRestoreOnboardingStackRef = useRef(false);
 
@@ -391,6 +414,10 @@ export function Navigation(props?: any) {
   const getInitialRouteName = (): string => {
     if (!isAuthenticated) {
       return ScreenNames.WELCOME;
+    }
+
+    if (isOnboardingComplete && !isSubscribed && isTrialExpired()) {
+      return ScreenNames.TRIAL_EXPIRED;
     }
 
     // If authenticated and onboarding is explicitly complete, go to home
@@ -439,6 +466,29 @@ export function Navigation(props?: any) {
       completeOnboarding();
     }
   }, [isAuthenticated, initialRouteName, isOnboardingComplete, currentOnboardingStep, completeOnboarding]);
+
+  // If the trial expires while user is in the app, hard-block with TrialExpired.
+  useEffect(() => {
+    const maybeBlockExpiredTrial = () => {
+      if (!isAuthenticated) return;
+      if (!isOnboardingComplete) return;
+      if (isSubscribed) return;
+      if (!navigationRef.isReady()) return;
+      if (!isTrialExpired()) return;
+
+      const currentRouteName = navigationRef.getCurrentRoute()?.name;
+      if (currentRouteName === ScreenNames.TRIAL_EXPIRED) return;
+
+      navigationRef.reset({
+        index: 0,
+        routes: [{ name: ScreenNames.TRIAL_EXPIRED as any }],
+      } as any);
+    };
+
+    maybeBlockExpiredTrial();
+    const intervalId = setInterval(maybeBlockExpiredTrial, 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated, isOnboardingComplete, isSubscribed, isTrialExpired, trialStartDate, navigationRef]);
 
   return (
     <NavigationContainer

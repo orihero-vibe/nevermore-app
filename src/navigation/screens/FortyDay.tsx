@@ -26,8 +26,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFortyDayStore } from '../../store/fortyDayStore';
 import { useFortyDayAudioPlayer } from '../../hooks/useFortyDayAudioPlayer';
-import { useSubscriptionStore } from '../../store/subscriptionStore';
-import { isJourneyDayFree } from '../../utils/contentAccess';
+import { useHasFullAccess } from '../../hooks/useHasFullAccess';
 import { SubscriptionPopup } from '../../components/SubscriptionPopup';
 import LockIcon from '../../assets/icons/lock';
 import MenuIcon from '../../assets/icons/menu';
@@ -58,7 +57,7 @@ export const FortyDay = () => {
     loadFortyDayContent ,
   } = useFortyDayStore();
 
-  const { isSubscribed } = useSubscriptionStore();
+  const hasFullAccess = useHasFullAccess();
   const [subscriptionPopupVisible, setSubscriptionPopupVisible] = useState(false);
 
   const carouselRef = useRef<any>(null);
@@ -155,8 +154,7 @@ export const FortyDay = () => {
   const handleTaskToggle = (taskId: string) => {
     if (
       currentDayData &&
-      !isSubscribed &&
-      !isJourneyDayFree(currentDayData.day, currentDayData.isFree)
+      !hasFullAccess
     ) {
       setSubscriptionPopupVisible(true);
       return;
@@ -181,8 +179,7 @@ export const FortyDay = () => {
 
   const renderCarouselItem = ({ item }: { item: typeof days[0] }) => {
     const isCurrentItem = item.day === days[activeIndex]?.day;
-    const isLocked =
-      !isSubscribed && !isJourneyDayFree(item.day, item.isFree);
+    const isLocked = !hasFullAccess;
 
     const cardContent = (
       <View style={styles.card}>

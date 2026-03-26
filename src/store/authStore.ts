@@ -4,6 +4,7 @@ import * as authService from '../services/auth.service';
 import { useBookmarkStore } from './bookmarkStore';
 import { useFortyDayStore } from './fortyDayStore';
 import { useOnboardingStore } from './onboardingStore';
+import { useTrialStore, syncTrialFromUserProfile } from './trialStore';
 import { ScreenNames } from '../constants/ScreenNames';
 
 interface AuthState {
@@ -37,6 +38,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Set onboarding step immediately when user signs up
       // This ensures new users start onboarding
       useOnboardingStore.getState().setCurrentStep(ScreenNames.PERMISSION);
+      await syncTrialFromUserProfile(user.$id);
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ 
@@ -53,6 +55,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authService.signIn(email, password);
       const user = await authService.getCurrentUser();
+      if (!user) {
+        throw new Error('No authenticated user after sign in');
+      }
+      await syncTrialFromUserProfile(user.$id, { backfillTrialIfMissing: true });
       // Mark onboarding as complete for existing users who sign in
       useOnboardingStore.getState().completeOnboarding();
       set({ user, isAuthenticated: true, isLoading: false });
@@ -73,6 +79,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       
       // Clear onboarding state on sign out
       useOnboardingStore.getState().resetOnboarding();
+      useTrialStore.getState().resetTrial();
       
       set({ user: null, isAuthenticated: false, isLoading: false });
     } catch (error: any) {
@@ -92,6 +99,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       useBookmarkStore.getState().clearBookmarks();
       useFortyDayStore.getState().clearProgress();
       useOnboardingStore.getState().resetOnboarding();
+      useTrialStore.getState().resetTrial();
       
       set({ user: null, isAuthenticated: false, isLoading: false });
     } catch (error: any) {
@@ -108,6 +116,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await authService.getCurrentUser();
       if (user) {
+        await syncTrialFromUserProfile(user.$id, { backfillTrialIfMissing: true });
         set({ user, isAuthenticated: true, isLoading: false });
       } else {
         set({ user: null, isAuthenticated: false, isLoading: false });
@@ -154,6 +163,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authService.createMagicURLSession(userId, secret);
       const user = await authService.getCurrentUser();
+      if (!user) {
+        throw new Error('No authenticated user after magic URL session');
+      }
+      await syncTrialFromUserProfile(user.$id, { backfillTrialIfMissing: true });
       // Mark onboarding as complete for magic URL login (existing users)
       useOnboardingStore.getState().completeOnboarding();
       set({ user, isAuthenticated: true, isLoading: false });

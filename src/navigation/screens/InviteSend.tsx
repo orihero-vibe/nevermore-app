@@ -32,7 +32,7 @@ export function InviteSend() {
   const navigation = useNavigation<any>();
   const [emails, setEmails] = useState<string[]>(['']);
   const [isLoading, setIsLoading] = useState(false);
-  const { completeOnboarding } = useOnboardingStore();
+  const { setCurrentStep } = useOnboardingStore();
   const { checkAuth, isAuthenticated } = useAuthStore();
   
   const width = Dimensions.get('window').width;
@@ -124,8 +124,8 @@ export function InviteSend() {
           `Invitations sent successfully to ${validEmails.length} ${validEmails.length === 1 ? 'friend' : 'friends'}!`,
           'Invitations Sent'
       );
-      completeOnboarding();
-      navigation.navigate(ScreenNames.HOME_TABS);
+      setCurrentStep(ScreenNames.TRIAL_WELCOME);
+      navigation.navigate(ScreenNames.TRIAL_WELCOME);
     
     } catch (error: unknown) {
       showAppwriteError(error, {
@@ -138,8 +138,8 @@ export function InviteSend() {
   };
 
   const handleSkip = () => {
-    completeOnboarding();
-    navigation.navigate(ScreenNames.HOME_TABS);
+    setCurrentStep(ScreenNames.TRIAL_WELCOME);
+    navigation.navigate(ScreenNames.TRIAL_WELCOME);
   };
 
   const isNextEnabled = emails.some(email => email.trim() !== '' && validateEmail(email.trim()));

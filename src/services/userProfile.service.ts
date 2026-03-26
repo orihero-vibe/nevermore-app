@@ -9,6 +9,8 @@ export interface UserProfile {
   nickname?: string;
   phone?: string;
   type?: string;
+  /** ISO datetime when the free trial was first started (Appwrite datetime attribute). */
+  trial_started_at?: string;
   $createdAt?: string;
   $updatedAt?: string;
 }
@@ -68,6 +70,31 @@ class UserProfileService {
       }
       
       throw new Error(error.message || 'Failed to create user profile');
+    }
+  }
+
+  /**
+   * Idempotent: sets trial_started_at on first call; returns existing server value if already set.
+   */
+  async ensureTrialStarted(auth_id: string): Promise<string | null> {
+    try {
+      this.validateConfig();
+      const profile = await this.getUserProfileByAuthId(auth_id);
+      if (!profile?.$id) {
+        return null;
+      }
+      if (profile.trial_started_at) {
+        return profile.trial_started_at;
+      }
+      const iso = new Date().toISOString();
+      const updated = await this.updateUserProfile(profile.$id, {
+        trial_started_at: iso,
+      });
+      const row = updated as unknown as UserProfile;
+      return row.trial_started_at ?? iso;
+    } catch (error: any) {
+      console.error('ensureTrialStarted error:', error);
+      return null;
     }
   }
 

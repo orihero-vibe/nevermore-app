@@ -29,16 +29,13 @@ import { SubscriptionPopup } from '../../components/SubscriptionPopup';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { useCategories } from '../../hooks/useCategories';
 import { useContent } from '../../hooks/useContent';
-import { useSubscriptionStore } from '../../store/subscriptionStore';
-import { isTemptationFree } from '../../utils/contentAccess';
+import { useHasFullAccess } from '../../hooks/useHasFullAccess';
 import type { Category } from '../../services/category.service';
 
 export interface TemptationItem {
   id: string;
   title: string;
   selected?: boolean;
-  /** True when this temptation is free (no subscription). */
-  isFree?: boolean;
 }
 
 type RootStackParamList = {
@@ -56,7 +53,7 @@ export default function Home() {
   const { categories, loading, error, getCategoryName } = useCategories();
   const { content: allContent, loading: contentLoading } = useContent();
 
-  const { isSubscribed } = useSubscriptionStore();
+  const hasFullAccess = useHasFullAccess();
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const [subscriptionPopupVisible, setSubscriptionPopupVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -87,12 +84,6 @@ export default function Home() {
           id: item.$id,
           title: item.title,
           selected: itemIndex === 0,
-          isFree: isTemptationFree(
-            item.$id,
-            category,
-            categoryIndex,
-            itemIndex
-          ),
         }));
 
       const categoryName = getCategoryName(category);
@@ -125,7 +116,7 @@ export default function Home() {
   };
 
   const handleNavigateToDetails = (item: TemptationItem) => {
-    if (!isSubscribed && !item.isFree) {
+    if (!hasFullAccess) {
       setSubscriptionPopupVisible(true);
       return;
     }
