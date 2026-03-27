@@ -21,12 +21,13 @@ import CheckmarkIcon from '../../assets/icons/checkmark';
 import { Button } from '../../components/Button';
 import { ScreenNames } from '../../constants/ScreenNames';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { useTrialStore } from '../../store/trialStore';
 import { getIAPProductIds } from '../../services/iap.service';
 
 type PlanType = 'monthly' | 'yearly';
 
 export function Subscription() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
@@ -38,6 +39,23 @@ export function Subscription() {
     restorePurchases,
     setError,
   } = useSubscriptionStore();
+  const isTrialExpired = useTrialStore((s) => s.isTrialExpired);
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    const fallbackRoute = !isSubscribed && isTrialExpired()
+      ? ScreenNames.TRIAL_EXPIRED
+      : ScreenNames.TRIAL_WELCOME;
+
+    navigation.reset({
+      index: 0,
+      routes: [{ name: fallbackRoute }],
+    });
+  };
 
   const handleSubscribe = async () => {
     setError(null);
@@ -45,7 +63,10 @@ export function Subscription() {
     const productId = productIds[selectedPlan];
     const success = await purchaseSubscription(productId);
     if (success) {
-      navigation.navigate(ScreenNames.HOME_TABS);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: ScreenNames.HOME_TABS }],
+      });
     }
   };
 
@@ -53,7 +74,10 @@ export function Subscription() {
     setError(null);
     const success = await restorePurchases();
     if (success) {
-      navigation.navigate(ScreenNames.HOME_TABS);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: ScreenNames.HOME_TABS }],
+      });
     }
   };
 
@@ -129,7 +153,7 @@ export function Subscription() {
       <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+            <TouchableOpacity onPress={handleBack}>
               <ArrowLeftIcon />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Nevermore</Text>
@@ -145,7 +169,7 @@ export function Subscription() {
             <Text style={styles.title}>SUBSCRIPTION</Text>
             
             <Text style={styles.description}>
-              Try out our Monthly Plan for 30 days free. Cancel anytime.
+              You have 3 free days. After that you must subscribe to continue.
             </Text>
 
             {isSubscribed ? (

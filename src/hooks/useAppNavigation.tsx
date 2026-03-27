@@ -31,6 +31,8 @@ export type RootStackParamList = {
     project?: string;
   } | undefined;
   [ScreenNames.INVITE_SEND]: undefined;
+  [ScreenNames.TRIAL_WELCOME]: undefined;
+  [ScreenNames.TRIAL_EXPIRED]: undefined;
   [ScreenNames.SUBSCRIPTION]: undefined;
   [ScreenNames.HOME_TABS]: undefined;
   [ScreenNames.HOME]: undefined;
@@ -80,6 +82,8 @@ export const useAppNavigation = () => {
     navigateToNickname: () => navigation.navigate(ScreenNames.NICKNAME),
     navigateToInvite: () => navigation.navigate(ScreenNames.INVITE),
     navigateToInviteSend: () => navigation.navigate(ScreenNames.INVITE_SEND),
+    navigateToTrialWelcome: () => navigation.navigate(ScreenNames.TRIAL_WELCOME),
+    navigateToTrialExpired: () => navigation.navigate(ScreenNames.TRIAL_EXPIRED),
     navigateToSubscription: () => navigation.navigate(ScreenNames.SUBSCRIPTION),
     navigateToHome: () => navigation.navigate(ScreenNames.HOME_TABS),
     navigateToHomeTabs: () => navigation.navigate(ScreenNames.HOME_TABS),

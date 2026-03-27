@@ -187,7 +187,7 @@ export function SubscriptionPopup({
         </View>
 
         <Text style={styles.description}>
-          Try our Monthly Plan for 30 days free. Cancel anytime.
+          You have 3 free days. After that you must subscribe to continue.
         </Text>
 
         <View style={styles.plansContainer}>

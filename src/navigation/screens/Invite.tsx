@@ -48,6 +48,7 @@ type RootStackParamList = {
   } | undefined;
   [ScreenNames.INVITE_SEND]: undefined;
   [ScreenNames.HOME_TABS]: undefined;
+  [ScreenNames.TRIAL_WELCOME]: undefined;
   [ScreenNames.SIGN_UP]: undefined;
   [ScreenNames.SET_PASSWORD]: undefined;
 };
@@ -58,9 +59,9 @@ type InviteNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export function Invite() {
     const navigation = useNavigation<InviteNavigationProp>();
     const route = useRoute<InviteRouteProp>();
-    const { navigateToInviteSend, navigateToHomeTabs, navigateToSignUp } = useAppNavigation();
+    const { navigateToInviteSend, navigateToSignUp } = useAppNavigation();
     const { quote, loading: quoteLoading } = useWelcomeQuote();
-    const { setCurrentStep, completeOnboarding } = useOnboardingStore();
+    const { setCurrentStep } = useOnboardingStore();
     const { checkAuth } = useAuthStore();
     
     const [isLoading, setIsLoading] = useState(false);
@@ -193,9 +194,12 @@ export function Invite() {
                         routes: [{ name: ScreenNames.SET_PASSWORD }],
                     });
                 } else {
-                    // Existing user - skip password setup, complete onboarding and go home
-                    completeOnboarding();
-                    navigateToHomeTabs();
+                    // Existing users should still pass through trial welcome.
+                    setCurrentStep(ScreenNames.TRIAL_WELCOME);
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: ScreenNames.TRIAL_WELCOME }],
+                    });
                 }
             } catch (sessionError: any) {
                 // Session creation failed - the magic URL may have expired or been used
@@ -234,8 +238,8 @@ export function Invite() {
     };
 
     const handleSkip = () => {
-        completeOnboarding();
-        navigateToHomeTabs();
+        setCurrentStep(ScreenNames.TRIAL_WELCOME);
+        navigation.navigate(ScreenNames.TRIAL_WELCOME);
     };
 
     if (isProcessingInvitation) {

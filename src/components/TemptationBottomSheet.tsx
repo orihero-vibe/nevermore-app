@@ -8,13 +8,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import cardBg from '../assets/card-bg.png';
 import LockIcon from '../assets/icons/lock';
-import { useSubscriptionStore } from '../store/subscriptionStore';
+import { useHasFullAccess } from '../hooks/useHasFullAccess';
 
 interface TemptationItem {
   id: string;
   title: string;
   selected?: boolean;
-  isFree?: boolean;
 }
 
 interface TemptationBottomSheetProps {
@@ -129,7 +128,7 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
   onNavigate,
 }) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const { isSubscribed } = useSubscriptionStore();
+  const hasFullAccess = useHasFullAccess();
 
   const snapPoints = useMemo(() => ['75%'], []);
 
@@ -214,7 +213,7 @@ export const TemptationBottomSheet: React.FC<TemptationBottomSheetProps> = ({
               item={item}
               index={index}
               onPress={handleItemPress}
-              isLocked={!isSubscribed && !item.isFree}
+              isLocked={!hasFullAccess}
             />
           ))}
         </View>
