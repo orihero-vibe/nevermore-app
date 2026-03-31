@@ -100,8 +100,10 @@ export function Subscription() {
     return (
       <TouchableOpacity
         style={[styles.planCard, isSelected && styles.planCardSelected]}
-        onPress={() => setSelectedPlan(planType)}
-        disabled={isLoading}
+        onPress={() => {
+          if (!isSelected) setSelectedPlan(planType);
+        }}
+        disabled={isLoading || isSelected}
       >
         <ImageBackground
           source={require('../../assets/card-bg.png')}
