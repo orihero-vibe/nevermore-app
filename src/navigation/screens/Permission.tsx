@@ -12,11 +12,34 @@ import { useNavigation } from '@react-navigation/native';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import { Button } from '../../components/Button';
 import { useOnboardingStore } from '../../store/onboardingStore';
+import { useAuthStore } from '../../store/authStore';
 import { ScreenNames } from '../../constants/ScreenNames';
 
 export function Permission() {
   const navigation = useNavigation();
   const { setCurrentStep } = useOnboardingStore();
+  const { signOut } = useAuthStore();
+
+  const handleBack = async () => {
+    if ((navigation as any).canGoBack()) {
+      (navigation as any).goBack();
+      return;
+    }
+
+    // When onboarding is restored on app relaunch, Permission can be stack root.
+    // In that case, "back" should exit onboarding and return to auth screens.
+    try {
+      await signOut();
+    } finally {
+      (navigation as any).reset({
+        index: 1,
+        routes: [
+          { name: ScreenNames.WELCOME },
+          { name: ScreenNames.SIGN_UP },
+        ],
+      });
+    }
+  };
 
   const handleNext = () => {
     // Save current step before navigating
@@ -36,7 +59,7 @@ export function Permission() {
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+            <TouchableOpacity onPress={handleBack}>
               <ArrowLeftIcon />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Nevermore</Text>
