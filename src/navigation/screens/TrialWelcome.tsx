@@ -56,14 +56,15 @@ export function TrialWelcome() {
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.title}>3-DAY FREE TRIAL</Text>
+          <Text style={styles.title}>Start with 3 free days</Text>
           <Text style={styles.description}>
-            You have 3 free days. After that you must subscribe to continue.
+            No pressure. Just listen.{'\n'}
+            If it helps, you can keep going.
           </Text>
         </View>
 
         <View style={styles.buttonContainer}>
-          <Button title="Start Subscription" onPress={handleStartSubscription} variant="primary" size="medium" />
+          <Button title="Start my 3 free days" onPress={handleStartSubscription} variant="primary" size="medium" />
           <SecondaryButton
             title="Not now"
             onPress={handleSkip}

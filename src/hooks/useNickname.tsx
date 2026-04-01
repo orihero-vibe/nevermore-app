@@ -23,7 +23,6 @@ interface UseNicknameReturn {
 
 export function useNickname(): UseNicknameReturn {
   const [nickname, setNickname] = useState('');
-  const [existingNickname, setExistingNickname] = useState<string | null>(null);
   const [inputState, setInputState] = useState<InputState>('default');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,17 +52,14 @@ export function useNickname(): UseNicknameReturn {
         if (cancelled) return;
 
         if (saved) {
-          setExistingNickname(saved);
           setNickname(saved);
           setInputState('success');
           setErrorMessage('');
-        } else {
-          setExistingNickname(null);
         }
       } catch (e) {
         // If hydration fails we fall back to empty nickname;
         // user can still set it manually.
-        if (!cancelled) setExistingNickname(null);
+        if (!cancelled) setNickname('');
       }
     };
 
@@ -73,52 +69,15 @@ export function useNickname(): UseNicknameReturn {
     };
   }, [user?.$id]);
 
-  const checkNicknameAvailability = useCallback(async (value: string) => {
-    if (!value.trim()) {
-      setInputState('default');
-      setErrorMessage('');
-      return;
-    }
-
-    // If user already owns this nickname, treat as available.
-    if (existingNickname && value.trim() === existingNickname) {
+  useEffect(() => {
+    if (nickname.trim()) {
       setInputState('success');
       setErrorMessage('');
-      return;
+    } else {
+      setInputState('default');
+      setErrorMessage('');
     }
-
-    setInputState('checking');
-    setErrorMessage('');
-
-    try {
-      const isAvailable = await userProfileService.isNicknameAvailable(value);
-      
-      if (isAvailable) {
-        setInputState('success');
-        setErrorMessage('');
-      } else {
-        setInputState('error');
-        setErrorMessage('This username is already in use. Try a different nickname.');
-      }
-    } catch (error: any) {
-      console.error('Error checking nickname availability:', error);
-      setInputState('error');
-      setErrorMessage('Failed to check nickname availability. Please try again.');
-    }
-  }, [existingNickname]);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (nickname.trim()) {
-        checkNicknameAvailability(nickname);
-      } else {
-        setInputState('default');
-        setErrorMessage('');
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [nickname, checkNicknameAvailability]);
+  }, [nickname]);
 
   const saveNickname = useCallback(async () => {
     if (!nickname.trim() || inputState !== 'success') {
@@ -146,8 +105,6 @@ export function useNickname(): UseNicknameReturn {
         nickname: nickname.trim(),
         type: userType,
       });
-
-      setExistingNickname(nickname.trim());
 
       // Clear the purpose from storage after saving
       await AsyncStorage.removeItem(PURPOSE_STORAGE_KEY);

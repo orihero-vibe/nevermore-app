@@ -75,9 +75,10 @@ export function Purpose() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.content}>
-            <Text style={styles.title}>WHAT BRINGS YOU HERE?</Text>
+            <Text style={styles.title}>Why are you here?</Text>
             <Text style={styles.description}>
-              Let us know if you're on your own path to sobriety, or here to support someone else on theirs. Either way, you're in the right place.
+              Be honest.{'\n'}
+              Are you here for yourself... or someone else?
             </Text>
 
             <View style={styles.cardsContainer}>
@@ -93,7 +94,7 @@ export function Purpose() {
                   style={styles.cardImage}
                   resizeMode="cover"
                 />
-                <Text style={styles.cardText}>I'M HERE FOR{'\n'}SOBRIETY</Text>
+                <Text style={styles.cardText}>I'm here for me</Text>
                 {selectedPurpose === 'seek-help' && (
                   <View style={styles.checkmarkContainer}>
                     <CheckIcon color="#000000" />
@@ -114,7 +115,7 @@ export function Purpose() {
                   style={styles.cardImage}
                   resizeMode="cover"
                 />
-                <Text style={styles.cardText}>I AM HERE TO{'\n'}HELP SOMEONE</Text>
+                <Text style={styles.cardText}>I'm here for someone else</Text>
                 {selectedPurpose === 'help-someone' && (
                   <View style={styles.checkmarkContainer}>
                     <CheckIcon color="#000000" />
@@ -127,7 +128,7 @@ export function Purpose() {
 
           <View style={styles.buttonContainer}>
             <Button
-              title="Next"
+              title="Continue"
               onPress={handleNext}
               variant="primary"
               size="medium"

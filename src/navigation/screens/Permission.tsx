@@ -70,10 +70,11 @@ export function Permission() {
           <View style={styles.content}>
             {/* Welcome Text */}
             <View style={styles.textContainer}>
-              <Text style={styles.title}>WELCOME</Text>
+              <Text style={styles.title}>YOU’RE NOT THE ONLY ONE</Text>
               
               <Text style={styles.description}>
-                Welcome to Nevermore, an audio-based app with honest and humorous content for anyone navigating alcohol struggles or supporting someone who is.
+                Real stories. Real thoughts.{"\n"}
+                About alcohol—and everything around it.
               </Text>
             </View>
           </View>
@@ -81,7 +82,7 @@ export function Permission() {
           {/* Next Button */}
           <View style={styles.buttonContainer}>
             <Button
-              title="Next"
+              title="Start Listening"
               onPress={handleNext}
               variant="primary"
               size="medium"
