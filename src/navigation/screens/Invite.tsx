@@ -314,10 +314,9 @@ export function Invite() {
                             ) : (
                                 <>
                                     <Text style={styles.quoteText}>
-                                        "The opposite of addiction is not sobriety.{'\n'}
-                                        The opposite of addiction is connection."
+                                        "Sobriety is a state of self love that is timeless."
                                     </Text>
-                                    <Text style={styles.quoteAuthor}>- Johann Hari</Text>
+                                    <Text style={styles.quoteAuthor}>- Lou</Text>
                                 </>
                             )}
                         </View>

@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  ScrollView,
   StyleSheet,
   StatusBar,
   Dimensions,
@@ -48,9 +49,14 @@ export function Nickname() {
   const mappedInputState = inputState === 'checking' ? 'default' : inputState;
 
   const handleNext = async () => {
-    await saveNickname();
-    setCurrentStep(ScreenNames.INVITE);
-    (navigation as any).navigate(ScreenNames.INVITE);
+    try {
+      await saveNickname();
+      setCurrentStep(ScreenNames.INVITE);
+      (navigation as any).navigate(ScreenNames.INVITE);
+    } catch (error) {
+      // Error state and message are managed by useNickname.
+      console.error('Failed to save nickname:', error);
+    }
   };
 
   const handleSkip = async () => {
@@ -79,7 +85,12 @@ export function Nickname() {
               <View style={styles.headerSpacer} />
             </View>
 
-            <View style={styles.content}>
+            <ScrollView
+              style={styles.content}
+              contentContainerStyle={styles.contentContainer}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               <Text style={styles.title}>WHAT SHOULD WE CALL YOU?</Text>
               
               <Input
@@ -98,7 +109,7 @@ export function Nickname() {
                   We're really glad you're here to support someone you care about. You can listen to the 40 Temptations and follow the 40-Day Journey to understand the daily steps your loved one is taking — and how you can support them along the way.
                 </Text>
               )}
-            </View>
+            </ScrollView>
 
             <View style={styles.buttonContainer}>
               <Button
@@ -160,8 +171,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     paddingHorizontal: 20,
     paddingTop: 40,
+    paddingBottom: 24,
   },
   title: {
     fontSize: 28,
