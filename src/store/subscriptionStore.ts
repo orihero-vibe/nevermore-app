@@ -49,9 +49,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         const { iapService } = await import('../services/iap.service');
         set({ isLoading: true, error: null });
         try {
-          console.log('productId', productId); 
           const success = await iapService.purchaseSubscription(productId);
-          
           if (success) {
             set({ isSubscribed: true, isLoading: false, error: null });
           } else {
