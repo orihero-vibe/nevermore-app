@@ -45,9 +45,12 @@ export type RootStackParamList = {
     date?: string;
     audioUrl?: string;
   };
-  [ScreenNames.TRANSCRIPT]: { 
+  [ScreenNames.TRANSCRIPT]: {
     title: string;
     transcript: string;
+    audioUrl?: string;
+    initialPositionSec?: number;
+    resumePlaying?: boolean;
   };
   [ScreenNames.PROFILE]: undefined;
   [ScreenNames.MANAGE_INVITES]: undefined;
@@ -96,8 +99,13 @@ export const useAppNavigation = () => {
       date?: string;
       audioUrl?: string;
     }) => navigation.navigate(ScreenNames.TEMPTATION_DETAILS, params),
-    navigateToTranscript: (params: { title: string; transcript: string }) => 
-      navigation.navigate(ScreenNames.TRANSCRIPT, params),
+    navigateToTranscript: (params: {
+      title: string;
+      transcript: string;
+      audioUrl?: string;
+      initialPositionSec?: number;
+      resumePlaying?: boolean;
+    }) => navigation.navigate(ScreenNames.TRANSCRIPT, params),
     navigateToProfile: () => navigation.navigate(ScreenNames.PROFILE),
     navigateToManageInvites: () => navigation.navigate(ScreenNames.MANAGE_INVITES),
     navigateToPrivacyPolicy: () => navigation.navigate(ScreenNames.PRIVACY_POLICY),

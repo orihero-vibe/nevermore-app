@@ -3,7 +3,8 @@ import { Content } from '../services/content.service';
 
 interface UseContentPresentationReturn {
   mainContentURL: string | null;
-  transcriptURL: string | null;
+  /** Plain text from CMS (transcriptRecoveryText / transcriptSupportText). */
+  transcriptTextFromFields: string | null;
   images: string[];
   displayImage: string;
   audioFiles: string[];
@@ -30,7 +31,7 @@ export function useContentPresentation(
     if (!content) {
       return {
         mainContentURL: null,
-        transcriptURL: null,
+        transcriptTextFromFields: null,
         images: [],
         displayImage: DEFAULT_IMAGE,
         audioFiles: [],
@@ -45,9 +46,13 @@ export function useContentPresentation(
       ? content.mainContentRecoveryURL || null
       : content.mainContentSupportURL || null;
     
-    const transcriptURL = role === 'recovery'
-      ? content.transcriptRecoveryURL || null
-      : content.transcriptSupportURL || null;
+    const transcriptTextFromFieldsRaw = role === 'recovery'
+      ? content.transcriptRecoveryText
+      : content.transcriptSupportText;
+    const transcriptTextFromFields =
+      typeof transcriptTextFromFieldsRaw === 'string' && transcriptTextFromFieldsRaw.trim().length > 0
+        ? transcriptTextFromFieldsRaw.trim()
+        : null;
 
     const images = content.images || [];
     const displayImage = images.length > 0 ? images[0] : DEFAULT_IMAGE;
@@ -55,12 +60,12 @@ export function useContentPresentation(
 
     return {
       mainContentURL,
-      transcriptURL,
+      transcriptTextFromFields,
       images,
       displayImage,
       audioFiles,
       hasAudio: audioFiles.length > 0,
-      hasTranscript: !!transcriptURL,
+      hasTranscript: !!transcriptTextFromFields,
       hasImages: images.length > 0,
     };
   }, [content, role]);

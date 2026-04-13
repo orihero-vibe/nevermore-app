@@ -16,8 +16,12 @@ export interface Content {
   type: string;
   mainContentRecoveryURL?: string;
   mainContentSupportURL?: string;
-  transcriptRecoveryURL?: string;
-  transcriptSupportURL?: string;
+  /**
+   * In-app transcript body. Appwrite attributes must be exactly `transcriptRecoveryText` / `transcriptSupportText`
+   * (use a large text type: mediumtext/longtext or high-size string per your Appwrite version).
+   */
+  transcriptRecoveryText?: string;
+  transcriptSupportText?: string;
   images?: string[];
   files?: string[];
   tasks?: string[];

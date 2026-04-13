@@ -37,8 +37,8 @@ export interface Content {
   type: string;
   mainContentRecoveryURL?: string;
   mainContentSupportURL?: string;
-  transcriptRecoveryURL?: string;
-  transcriptSupportURL?: string;
+  transcriptRecoveryText?: string;
+  transcriptSupportText?: string;
   images?: string[];
   files?: string[];
   tasks?: string[];

@@ -1,6 +1,12 @@
 import { useAudioPlayer as useExpoAudioPlayer, AudioSource } from 'expo-audio';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { audioCacheService } from '../services/audioCache.service';
+
+export type PlaybackSnapshot = {
+  positionSec: number;
+  durationSec: number;
+  isPlaying: boolean;
+};
 
 interface UseAudioPlayerReturn {
   isPlaying: boolean;
@@ -21,6 +27,7 @@ interface UseAudioPlayerReturn {
   forward: () => Promise<void>;
   loadAudio: (uri: string) => Promise<void>;
   unloadAudio: () => Promise<void>;
+  getPlaybackSnapshot: () => PlaybackSnapshot;
 }
 
 export function useAudioPlayer(): UseAudioPlayerReturn {
@@ -286,6 +293,16 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     }
   };
 
+  const getPlaybackSnapshot = useCallback((): PlaybackSnapshot => {
+    const dur = player.duration;
+    const pos = player.currentTime;
+    return {
+      positionSec: isFinite(pos) && pos >= 0 ? pos : 0,
+      durationSec: isFinite(dur) && dur > 0 ? dur : 0,
+      isPlaying: player.playing,
+    };
+  }, [player]);
+
   useEffect(() => {
     return () => {
       if (intervalRef.current) {
@@ -317,5 +334,6 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     forward,
     loadAudio,
     unloadAudio,
+    getPlaybackSnapshot,
   };
 }
