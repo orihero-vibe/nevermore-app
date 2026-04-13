@@ -10,7 +10,6 @@ import {
 } from '@shopify/react-native-skia';
 import React, { useState } from 'react';
 import {
-  Alert,
   Dimensions,
   FlatList,
   StyleSheet,
@@ -18,7 +17,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import * as Sharing from 'expo-sharing';
 import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -30,7 +28,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ArrowLeftIcon from '../../assets/icons/arrow-left';
 import BookmarkIcon from '../../assets/icons/bookmark';
 import BookmarkActiveIcon from '../../assets/icons/bookmark-active';
-import DocumentIcon from '../../assets/icons/document';
 import { MediaControls } from '../../components/MediaControls';
 import { ReflectionQuestionItem } from '../../components/ReflectionQuestionItem';
 import { ScreenNames } from '../../constants/ScreenNames';
@@ -43,19 +40,14 @@ import { useEntranceAnimations } from '../../hooks/useEntranceAnimations';
 import { useAudioPlaylist } from '../../hooks/useAudioPlaylist';
 import { useContentPresentation } from '../../hooks/useContentPresentation';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
-import { storageService } from '../../services/storage.service';
 import { getContentCategoryId } from '../../services/content.service';
+import { RootStackParamList } from '../../hooks/useAppNavigation';
 
-type RootStackParamList = {
-  TemptationDetails: {
-    contentId: string;
-    temptationTitle: string;
-    categoryId?: string;
-  };
-};
-
-type TemptationDetailsRouteProp = RouteProp<RootStackParamList, 'TemptationDetails'>;
-type TemptationDetailsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'TemptationDetails'>;
+type TemptationDetailsRouteProp = RouteProp<RootStackParamList, ScreenNames.TEMPTATION_DETAILS>;
+type TemptationDetailsNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  ScreenNames.TEMPTATION_DETAILS
+>;
 
 export default function TemptationDetails() {
   const navigation = useNavigation<TemptationDetailsNavigationProp>();
@@ -101,7 +93,13 @@ export default function TemptationDetails() {
   const { selectedAudioIndex, audioPlayer: reflectionAudioPlayer, handleAudioSelect, loadPlaylist } = useAudioPlaylist();
   
   // Get role-specific content presentation data
-  const { mainContentURL, transcriptURL, images, displayImage, audioFiles } = useContentPresentation(content, activeButton);
+  const {
+    mainContentURL,
+    transcriptTextFromFields,
+    images,
+    displayImage,
+    audioFiles,
+  } = useContentPresentation(content, activeButton);
   
   // Load main content audio when URL changes or when switching tabs
   React.useEffect(() => {
@@ -137,63 +135,8 @@ export default function TemptationDetails() {
   const currentRole = activeButton === 'recovery' ? 'Recovery' : 'Support';
   const isCurrentlyBookmarked = content ? isBookmarked(content.$id, currentRole) : false;
 
-  const [transcriptFileName, setTranscriptFileName] = useState<string>('');
-
-  const truncateFileName = React.useCallback((fileName: string, maxLength: number = 35): string => {
-    if (fileName.length <= maxLength) {
-      return fileName;
-    }
-    
-    // Extract extension if present
-    const lastDotIndex = fileName.lastIndexOf('.');
-    const hasExtension = lastDotIndex > 0;
-    const extension = hasExtension ? fileName.substring(lastDotIndex) : '';
-    const nameWithoutExt = hasExtension ? fileName.substring(0, lastDotIndex) : fileName;
-    
-    // Calculate how many characters we can show (accounting for ".." and extension)
-    const availableLength = maxLength - extension.length - 2; // 2 for ".."
-    
-    if (nameWithoutExt.length <= availableLength) {
-      return fileName;
-    }
-    
-    // Show first part + ".." + last part + extension
-    const firstPartLength = Math.floor(availableLength / 2);
-    const lastPartLength = availableLength - firstPartLength;
-    const firstPart = nameWithoutExt.substring(0, firstPartLength);
-    const lastPart = nameWithoutExt.substring(nameWithoutExt.length - lastPartLength);
-    
-    return `${firstPart}..${lastPart}${extension}`;
-  }, []);
-
-  React.useEffect(() => {
-    if (transcriptURL) {
-      const fetchFileName = async () => {
-        try {
-          const fileName = await storageService.getFileName(transcriptURL);
-          setTranscriptFileName(fileName);
-        } catch {
-          setTranscriptFileName(`Transcript (${activeButton === 'recovery' ? 'Recovery' : 'Support'})`);
-        }
-      };
-      fetchFileName();
-    } else {
-      setTranscriptFileName('');
-    }
-  }, [transcriptURL, activeButton]);
-
-  const handleTranscriptDownload = React.useCallback(async (transcriptUrl: string) => {
-    if (!transcriptUrl) {
-      Alert.alert('No File', 'No transcript file available for download.');
-      return;
-    }
-
-    try {
-      await storageService.downloadFile(transcriptUrl);
-    } catch (error) {
-      console.error('Failed to download transcript file:', error);
-    }
-  }, []);
+  const effectiveTranscriptText = transcriptTextFromFields || '';
+  const hasReadableTranscript = effectiveTranscriptText.length > 0;
 
   const audioFilesRef = React.useRef<string[]>([]);
   React.useEffect(() => {
@@ -208,6 +151,37 @@ export default function TemptationDetails() {
 
   // Get the currently active audio player
   const currentAudioPlayer = activeAudioSource === 'main' ? mainContentAudioPlayer : reflectionAudioPlayer;
+
+  const handleOpenFullTranscript = React.useCallback(() => {
+    if (!content || !hasReadableTranscript) {
+      return;
+    }
+    const activeAudioUrl =
+      activeAudioSource === 'main'
+        ? mainContentURL
+        : audioFiles.length > 0
+          ? audioFiles[selectedAudioIndex] ?? null
+          : null;
+    const snap = currentAudioPlayer.getPlaybackSnapshot();
+    navigation.navigate(ScreenNames.TRANSCRIPT, {
+      title: content.title || temptationTitle,
+      transcript: effectiveTranscriptText,
+      audioUrl: activeAudioUrl ?? undefined,
+      initialPositionSec: snap.positionSec,
+      resumePlaying: snap.isPlaying,
+    });
+  }, [
+    content,
+    hasReadableTranscript,
+    effectiveTranscriptText,
+    temptationTitle,
+    activeAudioSource,
+    mainContentURL,
+    audioFiles,
+    selectedAudioIndex,
+    currentAudioPlayer,
+    navigation,
+  ]);
 
   // Handle switching to main content audio
   const handleMainContentPlay = React.useCallback(() => {
@@ -398,27 +372,27 @@ export default function TemptationDetails() {
           </View>
         )}
 
-        {transcriptURL && (
+        {hasReadableTranscript && (
           <View style={styles.transcriptSection}>
             <View style={styles.transcriptHeader}>
               <Text style={styles.sectionTitle}>Transcript</Text>
-            </View>
-            <TouchableOpacity 
-              style={styles.transcriptActions} 
-              onPress={() => handleTranscriptDownload(transcriptURL)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.transcriptText} numberOfLines={1}>
-                {truncateFileName(transcriptFileName || `Transcript (${activeButton === 'recovery' ? 'Recovery' : 'Support'})`)}
-              </Text>
-              <TouchableOpacity 
-                style={styles.downloadButton} 
-                onPress={() => handleTranscriptDownload(transcriptURL)}
+              <TouchableOpacity
+                onPress={handleOpenFullTranscript}
                 activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <DocumentIcon color="#8B5CF6" />
+                <Text style={styles.transcriptViewAll}>View all</Text>
               </TouchableOpacity>
-            </TouchableOpacity>
+            </View>
+            <View style={styles.transcriptPreviewBox}>
+              <Text
+                style={styles.transcriptPreview}
+                numberOfLines={3}
+                ellipsizeMode="tail"
+              >
+                {effectiveTranscriptText}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -602,34 +576,33 @@ const styles = StyleSheet.create({
   transcriptHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  transcriptContainer: {
-    marginTop: 0,
-  },
-  transcriptActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 12,
+    gap: 12,
+  },
+  transcriptViewAll: {
+    color: '#8B5CF6',
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: 'Roboto_400Regular',
+  },
+  transcriptPreviewBox: {
     backgroundColor: '#1A1A1A',
     borderRadius: 12,
     paddingHorizontal: 16,
-    marginBottom: 12,
-    height: 60,
+    paddingVertical: 14,
+    marginBottom: 10,
   },
-  downloadButton: {
-    padding: 4,
+  transcriptPreview: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: 'Roboto_400Regular',
   },
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Roboto_400Regular',
-  },
-  transcriptText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    lineHeight: 20,
     fontFamily: 'Roboto_400Regular',
   },
   reflectionSection: {

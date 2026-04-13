@@ -54,6 +54,33 @@ class StorageService {
     }
   }
 
+  /**
+   * Resolves a downloadable HTTPS URL for a storage file ID or full file URL.
+   */
+  async getFileDownloadUrl(fileIdOrUrl: string): Promise<string> {
+    this.validateConfig();
+
+    const fileId = this.extractFileIdFromUrl(fileIdOrUrl);
+    if (!fileId) {
+      throw new Error('Invalid file ID or URL');
+    }
+
+    if (isValidUrl(fileIdOrUrl)) {
+      return fileIdOrUrl;
+    }
+
+    const downloadUrlResult = storage.getFileDownload({
+      bucketId: APPWRITE_STORAGE_BUCKET_ID,
+      fileId,
+    });
+
+    if (downloadUrlResult instanceof Promise) {
+      const result = await downloadUrlResult;
+      return typeof result === 'string' ? result : fileIdOrUrl;
+    }
+    return typeof downloadUrlResult === 'string' ? downloadUrlResult : fileIdOrUrl;
+  }
+
   extractFileIdFromUrl(url: string): string | null {
     if (!url) return null;
 
@@ -101,22 +128,7 @@ class StorageService {
         finalFileName = metadata.name || `file_${fileId}`;
       }
 
-      let downloadUrl: string;
-      if (isValidUrl(fileIdOrUrl)) {
-        downloadUrl = fileIdOrUrl;
-      } else {
-        const downloadUrlResult = storage.getFileDownload({
-          bucketId: APPWRITE_STORAGE_BUCKET_ID,
-          fileId,
-        });
-        
-        if (downloadUrlResult instanceof Promise) {
-          const result = await downloadUrlResult;
-          downloadUrl = typeof result === 'string' ? result : fileIdOrUrl;
-        } else {
-          downloadUrl = typeof downloadUrlResult === 'string' ? downloadUrlResult : fileIdOrUrl;
-        }
-      }
+      const downloadUrl = await this.getFileDownloadUrl(fileIdOrUrl);
 
       const fileUri = `${FileSystem.documentDirectory}${finalFileName}`;
       
