@@ -40,7 +40,11 @@ export interface Content {
   transcriptRecoveryText?: string;
   transcriptSupportText?: string;
   images?: string[];
+  recoveryImages?: string[];
+  supportImages?: string[];
   files?: string[];
+  recoveryQuestionFiles?: string[];
+  supportQuestionFiles?: string[];
   tasks?: string[];
   $createdAt?: string;
   $updatedAt?: string;

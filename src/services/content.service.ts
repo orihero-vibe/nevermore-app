@@ -23,13 +23,87 @@ export interface Content {
   transcriptRecoveryText?: string;
   transcriptSupportText?: string;
   images?: string[];
+  recoveryImages?: string[];
+  supportImages?: string[];
   files?: string[];
+  recoveryQuestionFiles?: string[];
+  supportQuestionFiles?: string[];
   tasks?: string[];
   /** If true, this content is free (no subscription). For journey: only Day 1–3 can be free. */
   isFree?: boolean;
   $createdAt?: string;
   $updatedAt?: string;
   [key: string]: unknown;
+}
+
+/** Normalize image URL lists from Appwrite (arrays, JSON strings, single URL, `{ url }` rows). */
+export function normalizeUrlStringList(raw: unknown): string[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    const out: string[] = [];
+    for (const el of raw) {
+      if (typeof el === 'string') {
+        const t = el.trim();
+        if (t) out.push(t);
+      } else if (el && typeof el === 'object' && 'url' in el && typeof (el as { url: unknown }).url === 'string') {
+        const t = (el as { url: string }).url.trim();
+        if (t) out.push(t);
+      }
+    }
+    return out;
+  }
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    if (!t) return [];
+    if (t.startsWith('[')) {
+      try {
+        return normalizeUrlStringList(JSON.parse(t));
+      } catch {
+        /* treat as plain URL */
+      }
+    }
+    return [t];
+  }
+  return [];
+}
+
+export function unionUrlStringLists(...raws: unknown[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of raws) {
+    for (const u of normalizeUrlStringList(raw)) {
+      if (!seen.has(u)) {
+        seen.add(u);
+        out.push(u);
+      }
+    }
+  }
+  return out;
+}
+
+export function getPresentationImageLists(content: Content): {
+  legacy: string[];
+  recovery: string[];
+  support: string[];
+} {
+  const row = content as Record<string, unknown>;
+  const legacy = unionUrlStringLists(row.images);
+  const recovery = unionUrlStringLists(row.recoveryImages, row.recovery_images);
+  const support = unionUrlStringLists(row.supportImages, row.support_images);
+  return { legacy, recovery, support };
+}
+
+/** Role-specific reflection question audio lists; legacy is normalized `files`. */
+export function getPresentationQuestionFileLists(content: Content): {
+  legacy: string[];
+  recovery: string[];
+  support: string[];
+} {
+  const row = content as Record<string, unknown>;
+  const legacy = normalizeUrlStringList(row.files);
+  const recovery = unionUrlStringLists(row.recoveryQuestionFiles, row.recovery_question_files);
+  const support = unionUrlStringLists(row.supportQuestionFiles, row.support_question_files);
+  return { legacy, recovery, support };
 }
 
 export function getContentCategoryId(content: Content): string | null {

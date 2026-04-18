@@ -40,6 +40,7 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
   const [progress, setProgress] = useState(0);
   const previousVolumeRef = useRef<number>(1.0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
   const player = useExpoAudioPlayer();
 
@@ -62,15 +63,17 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     if (currentUri) {
       // Poll player state to keep React state in sync
       intervalRef.current = setInterval(() => {
-        setIsPlaying(player.playing);
-        
-        // Update time and progress
-        const currentTimeMs = player.currentTime * 1000;
-        const durationMs = player.duration * 1000;
-        
-        setCurrentTime(formatTime(currentTimeMs));
-        setTotalTime(isFinite(player.duration) && player.duration > 0 ? formatTime(durationMs) : '--:--');
-        setProgress(player.duration > 0 && isFinite(player.duration) ? player.currentTime / player.duration : 0);
+        if (!mountedRef.current) return;
+        try {
+          setIsPlaying(player.playing);
+          const currentTimeMs = player.currentTime * 1000;
+          const durationMs = player.duration * 1000;
+          setCurrentTime(formatTime(currentTimeMs));
+          setTotalTime(isFinite(player.duration) && player.duration > 0 ? formatTime(durationMs) : '--:--');
+          setProgress(player.duration > 0 && isFinite(player.duration) ? player.currentTime / player.duration : 0);
+        } catch {
+          // native player already released
+        }
       }, 100);
     } else {
       setIsPlaying(false);
@@ -106,7 +109,9 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
 
       // Get cached audio URI (downloads if not cached)
       const cachedUri = await audioCacheService.getAudioUri(uri);
-      
+
+      if (!mountedRef.current) return;
+
       const audioSource: AudioSource = { uri: cachedUri };
       await player.replace(audioSource);
 
@@ -114,9 +119,12 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
       let attempts = 0;
       const maxAttempts = 50; // 5 seconds max
       while ((!isFinite(player.duration) || player.duration === 0) && attempts < maxAttempts) {
+        if (!mountedRef.current) return;
         await new Promise(resolve => setTimeout(resolve, 100));
         attempts++;
       }
+
+      if (!mountedRef.current) return;
 
       setIsMuted(false);
       previousVolumeRef.current = 1.0;
@@ -294,22 +302,31 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
   };
 
   const getPlaybackSnapshot = useCallback((): PlaybackSnapshot => {
-    const dur = player.duration;
-    const pos = player.currentTime;
-    return {
-      positionSec: isFinite(pos) && pos >= 0 ? pos : 0,
-      durationSec: isFinite(dur) && dur > 0 ? dur : 0,
-      isPlaying: player.playing,
-    };
+    try {
+      const dur = player.duration;
+      const pos = player.currentTime;
+      return {
+        positionSec: isFinite(pos) && pos >= 0 ? pos : 0,
+        durationSec: isFinite(dur) && dur > 0 ? dur : 0,
+        isPlaying: player.playing,
+      };
+    } catch {
+      return { positionSec: 0, durationSec: 0, isPlaying: false };
+    }
   }, [player]);
 
   useEffect(() => {
     return () => {
+      mountedRef.current = false;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      if (currentUri && player.playing) {
-        player.pause();
+      try {
+        if (player.playing) {
+          player.pause();
+        }
+      } catch {
+        // native player already released
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

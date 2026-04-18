@@ -1,5 +1,9 @@
 import { useMemo } from 'react';
-import { Content } from '../services/content.service';
+import {
+  Content,
+  getPresentationImageLists,
+  getPresentationQuestionFileLists,
+} from '../services/content.service';
 
 interface UseContentPresentationReturn {
   mainContentURL: string | null;
@@ -54,9 +58,31 @@ export function useContentPresentation(
         ? transcriptTextFromFieldsRaw.trim()
         : null;
 
-    const images = content.images || [];
+    const { legacy: legacyImages, recovery: recoveryImages, support: supportImages } =
+      getPresentationImageLists(content);
+    const images =
+      role === 'recovery'
+        ? recoveryImages.length > 0
+          ? recoveryImages
+          : legacyImages
+        : supportImages.length > 0
+          ? supportImages
+          : legacyImages;
     const displayImage = images.length > 0 ? images[0] : DEFAULT_IMAGE;
-    const audioFiles = content.files || [];
+
+    const {
+      legacy: legacyQuestionFiles,
+      recovery: recoveryQuestionFiles,
+      support: supportQuestionFiles,
+    } = getPresentationQuestionFileLists(content);
+    const audioFiles =
+      role === 'recovery'
+        ? recoveryQuestionFiles.length > 0
+          ? recoveryQuestionFiles
+          : legacyQuestionFiles
+        : supportQuestionFiles.length > 0
+          ? supportQuestionFiles
+          : legacyQuestionFiles;
 
     return {
       mainContentURL,
