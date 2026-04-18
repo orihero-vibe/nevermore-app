@@ -73,9 +73,6 @@ export default function TemptationDetails() {
   // Default to recovery
   const [activeButton, setActiveButton] = useState<'recovery' | 'support'>('recovery');
   
-  // Track which audio source is currently active
-  const [activeAudioSource, setActiveAudioSource] = useState<'main' | 'question'>('main');
-  
   const scrollY = useSharedValue(0);
   
   const scrollHandler = useAnimatedScrollHandler({
@@ -113,10 +110,10 @@ export default function TemptationDetails() {
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
-  // Reset image index when content changes
+  // Reset carousel when content or Recovery/Support tab changes (images list is role-specific)
   React.useEffect(() => {
     setCurrentImageIndex(0);
-  }, [content?.$id]);
+  }, [content?.$id, activeButton]);
   
   const headerBackgroundStyle = useAnimatedStyle(() => {
     const backgroundColorOpacity = interpolate(
@@ -149,24 +146,15 @@ export default function TemptationDetails() {
     }
   }, [audioFiles, loadPlaylist]);
 
-  // Get the currently active audio player
-  const currentAudioPlayer = activeAudioSource === 'main' ? mainContentAudioPlayer : reflectionAudioPlayer;
-
   const handleOpenFullTranscript = React.useCallback(() => {
     if (!content || !hasReadableTranscript) {
       return;
     }
-    const activeAudioUrl =
-      activeAudioSource === 'main'
-        ? mainContentURL
-        : audioFiles.length > 0
-          ? audioFiles[selectedAudioIndex] ?? null
-          : null;
-    const snap = currentAudioPlayer.getPlaybackSnapshot();
+    const snap = mainContentAudioPlayer.getPlaybackSnapshot();
     navigation.navigate(ScreenNames.TRANSCRIPT, {
       title: content.title || temptationTitle,
       transcript: effectiveTranscriptText,
-      audioUrl: activeAudioUrl ?? undefined,
+      audioUrl: mainContentURL ?? undefined,
       initialPositionSec: snap.positionSec,
       resumePlaying: snap.isPlaying,
     });
@@ -175,31 +163,26 @@ export default function TemptationDetails() {
     hasReadableTranscript,
     effectiveTranscriptText,
     temptationTitle,
-    activeAudioSource,
     mainContentURL,
-    audioFiles,
-    selectedAudioIndex,
-    currentAudioPlayer,
+    mainContentAudioPlayer,
     navigation,
   ]);
 
-  // Handle switching to main content audio
-  const handleMainContentPlay = React.useCallback(() => {
-    if (activeAudioSource !== 'main') {
-      reflectionAudioPlayer.stop();
-      setActiveAudioSource('main');
+  // Only one stream at a time: starting main playback pauses reflection; question actions pause main (position preserved).
+  const handleMainPlayPause = React.useCallback(async () => {
+    if (!mainContentAudioPlayer.isPlaying) {
+      await reflectionAudioPlayer.pause();
     }
-    mainContentAudioPlayer.togglePlayPause();
-  }, [activeAudioSource, reflectionAudioPlayer, mainContentAudioPlayer]);
+    await mainContentAudioPlayer.togglePlayPause();
+  }, [mainContentAudioPlayer, reflectionAudioPlayer]);
 
-  // Handle selecting a reflection question
-  const handleQuestionSelect = React.useCallback(async (index: number) => {
-    if (activeAudioSource !== 'question') {
-      mainContentAudioPlayer.stop();
-      setActiveAudioSource('question');
-    }
-    await handleAudioSelect(index);
-  }, [activeAudioSource, mainContentAudioPlayer, handleAudioSelect]);
+  const handleQuestionSelect = React.useCallback(
+    async (index: number) => {
+      await mainContentAudioPlayer.pause();
+      await handleAudioSelect(index);
+    },
+    [mainContentAudioPlayer, handleAudioSelect]
+  );
 
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
@@ -211,8 +194,9 @@ export default function TemptationDetails() {
 
   const handleButtonPress = (buttonId: 'recovery' | 'support') => {
     setActiveButton(buttonId);
-    // Stop main content audio when switching tabs
-    mainContentAudioPlayer.stop();
+    // Stop reflection audio on tab change so Recovery clips cannot keep playing on Support (and vice versa).
+    void mainContentAudioPlayer.stop();
+    void reflectionAudioPlayer.stop();
   };
 
   const tabSwitcher = useTabSwitcher({
@@ -323,36 +307,41 @@ export default function TemptationDetails() {
           </TouchableOpacity>
         </View>
 
-        {(mainContentURL || audioFiles.length > 0) && (
+        {mainContentURL && (
           <MediaControls
-            isPlaying={currentAudioPlayer.isPlaying}
-            isLoading={currentAudioPlayer.isLoading}
-            currentTime={currentAudioPlayer.currentTime}
-            totalTime={currentAudioPlayer.totalTime}
-            progress={currentAudioPlayer.progress}
-            onPlayPause={currentAudioPlayer.togglePlayPause}
-            onRewind={currentAudioPlayer.rewind}
-            onForward={currentAudioPlayer.forward}
-            onStop={currentAudioPlayer.stop}
-            onSeek={currentAudioPlayer.seekTo}
+            isPlaying={mainContentAudioPlayer.isPlaying}
+            isLoading={mainContentAudioPlayer.isLoading}
+            currentTime={mainContentAudioPlayer.currentTime}
+            totalTime={mainContentAudioPlayer.totalTime}
+            progress={mainContentAudioPlayer.progress}
+            onPlayPause={handleMainPlayPause}
+            onRewind={mainContentAudioPlayer.rewind}
+            onForward={mainContentAudioPlayer.forward}
+            onStop={mainContentAudioPlayer.stop}
+            onSeek={mainContentAudioPlayer.seekTo}
           />
         )}
 
         {images.length > 0 && (
           <View style={styles.imageContainer}>
             <FlatList
+              key={`${content.$id}-images-${activeButton}`}
               data={images}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              keyExtractor={(item, index) => index.toString()}
+              keyExtractor={(item, index) => `${activeButton}-${index}-${item}`}
               onMomentumScrollEnd={(event) => {
                 const imageWidth = width - 40; // Account for padding (20px each side)
                 const index = Math.round(event.nativeEvent.contentOffset.x / imageWidth);
                 setCurrentImageIndex(index);
               }}
               renderItem={({ item }) => (
-                <Image source={{ uri: item }} style={styles.imagePlaceholder} />
+                <Image
+                  source={{ uri: item }}
+                  style={styles.imagePlaceholder}
+                  contentFit="cover"
+                />
               )}
               contentContainerStyle={styles.imageListContainer}
             />
@@ -398,26 +387,17 @@ export default function TemptationDetails() {
 
         <View style={styles.reflectionSection}>
           <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Reflection Questions</Text>
-          {mainContentURL && (
-            <ReflectionQuestionItem
-              isPlaying={activeAudioSource === 'main' && mainContentAudioPlayer.isPlaying}
-              isLoading={activeAudioSource === 'main' && mainContentAudioPlayer.isLoading}
-              onPress={handleMainContentPlay}
-              label="Main Content"
-              isSelected={activeAudioSource === 'main'}
-            />
-          )}
           {audioFiles.length > 0 && (
             <FlatList
               data={audioFiles}
               keyExtractor={(item, index) => index.toString()}
               renderItem={({ item, index }) => (
                 <ReflectionQuestionItem
-                  isPlaying={activeAudioSource === 'question' && index === selectedAudioIndex && reflectionAudioPlayer.isPlaying}
-                  isLoading={activeAudioSource === 'question' && index === selectedAudioIndex && reflectionAudioPlayer.isLoading}
+                  isPlaying={index === selectedAudioIndex && reflectionAudioPlayer.isPlaying}
+                  isLoading={index === selectedAudioIndex && reflectionAudioPlayer.isLoading}
                   onPress={() => handleQuestionSelect(index)}
                   questionNumber={index + 1}
-                  isSelected={activeAudioSource === 'question' && index === selectedAudioIndex}
+                  isSelected={index === selectedAudioIndex}
                 />
               )}
               contentContainerStyle={styles.reflectionContainer}
@@ -547,7 +527,6 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     width: Dimensions.get('window').width - 40,
     height: 200,
-    resizeMode: 'cover',
     backgroundColor: '#1A1A1A',
     borderRadius: 16,
     marginRight: 0,
