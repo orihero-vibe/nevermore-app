@@ -182,7 +182,7 @@ export function InviteSend() {
 
           <View style={styles.content}>
             <Text style={styles.title}>
-              INVITE UP TO TWO (2) FRIENDS OR LOVED ONES TO JOIN YOU ON YOUR JOURNEY.
+              INVITE UP TO TWO (2) FRIENDS OR LOVED ONES TO JOIN YOU ON YOUR CHALLENGE.
             </Text>
             
             <View style={styles.emailSection}>

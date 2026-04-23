@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  Image,
   ImageBackground,
   TouchableOpacity,
   Dimensions,
@@ -13,7 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { BlurView } from 'expo-blur';
-import Carousel from 'react-native-reanimated-carousel';
+import Carousel, { type ICarouselInstance } from 'react-native-reanimated-carousel';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -35,9 +36,8 @@ import ChevronLeftIcon from '../../assets/icons/chevron-left';
 import ChevronRightIcon from '../../assets/icons/chevron-right';
 import PlayIcon from '../../assets/icons/play';
 import PauseIcon from '../../assets/icons/pause';
-import VolumeIcon from '../../assets/icons/volume';
-import VolumeMutedIcon from '../../assets/icons/volume-muted';
-import SoundWaveIcon from '../../assets/icons/sound-wave';
+import BackwardIcon from '../../assets/icons/backward10';
+import Forward10Icon from '../../assets/icons/forward10';
 import CheckmarkIcon from '../../assets/icons/checkmark';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -60,7 +60,7 @@ export const FortyDay = () => {
   const hasFullAccess = useHasFullAccess();
   const [subscriptionPopupVisible, setSubscriptionPopupVisible] = useState(false);
 
-  const carouselRef = useRef<any>(null);
+  const carouselRef = useRef<ICarouselInstance | null>(null);
   const [activeIndex, setActiveIndex] = useState(() => {
     if (days.length === 0) return 0;
     return Math.max(0, Math.min(currentDay - 1, days.length - 1));
@@ -131,11 +131,21 @@ export const FortyDay = () => {
     }
   }, [days.length, currentDay]);
 
-  // Unload audio when switching days to clean up resources
-  // Audio will only load when user clicks play button
+  // Prepare audio metadata when switching days so duration is available before play.
   useEffect(() => {
-    audioPlayer.unloadAudio();
-  }, [activeIndex]);
+    const activeDay = days[activeIndex];
+
+    const prepareAudio = async () => {
+      await audioPlayer.unloadAudio();
+
+      if (activeDay?.audioUrl) {
+        await audioPlayer.loadAudio(activeDay.audioUrl);
+      }
+    };
+
+    prepareAudio();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, days]);
 
   const currentDayData = days[activeIndex];
 
@@ -194,7 +204,7 @@ export const FortyDay = () => {
             {!isLocked && (
               <TouchableOpacity
                 style={styles.flagButton}
-                onPress={() => navigateToHelpSupport({ preSelectedReason: 'Inappropriate Content' })}
+                onPress={() => navigateToHelpSupport({})}
               >
                 <FlagIcon width={30} height={30} />
               </TouchableOpacity>
@@ -221,43 +231,43 @@ export const FortyDay = () => {
                 <Text style={styles.lockedHint}>Unlock to play</Text>
               </View>
             ) : isCurrentItem && audioPlayer.isLoading ? (
-              <View style={styles.mediaControlsContainer}>
-                <View style={styles.mediaIconArea}>
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                </View>
-                <View style={styles.mediaIconArea} />
+              <View style={styles.audioControlsWrapper}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
               </View>
             ) : (
-              <View style={styles.mediaControlsContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.mediaIconArea,
-                    !item.audioUrl && styles.mediaIconAreaDisabled
-                  ]}
-                  onPress={() => isCurrentItem && item.audioUrl && handlePlayPause(item.audioUrl)}
-                  disabled={!item.audioUrl}
-                >
-                  {isCurrentItem && audioPlayer.isPlaying ? (
-                    <PauseIcon width={20} height={20} />
-                  ) : (
-                    <PlayIcon width={20} height={20} />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.mediaIconArea,
-                    !item.audioUrl && styles.mediaIconAreaDisabled,
-                    isCurrentItem && audioPlayer.isLoading && styles.mediaIconAreaDisabled
-                  ]}
-                  onPress={() => isCurrentItem && item.audioUrl && audioPlayer.toggleMute()}
-                  disabled={!item.audioUrl || (isCurrentItem && audioPlayer.isLoading)}
-                >
-                  {isCurrentItem && audioPlayer.isMuted ? (
-                    <VolumeMutedIcon width={20} height={20} />
-                  ) : (
-                    <VolumeIcon width={20} height={20} />
-                  )}
-                </TouchableOpacity>
+              <View style={styles.audioControlsWrapper}>
+                <View style={styles.audioControlsRow}>
+                  <TouchableOpacity
+                    style={[styles.audioControlBtn, !item.audioUrl && styles.mediaIconAreaDisabled]}
+                    onPress={() => isCurrentItem && audioPlayer.seekBackward(10)}
+                    disabled={!item.audioUrl}
+                  >
+                    <BackwardIcon width={32} height={32} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.audioPlayBtn, !item.audioUrl && styles.mediaIconAreaDisabled]}
+                    onPress={() => isCurrentItem && item.audioUrl && handlePlayPause(item.audioUrl)}
+                    disabled={!item.audioUrl}
+                  >
+                    {isCurrentItem && audioPlayer.isPlaying ? (
+                      <PauseIcon width={36} height={36} />
+                    ) : (
+                      <PlayIcon width={36} height={36} />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.audioControlBtn, !item.audioUrl && styles.mediaIconAreaDisabled]}
+                    onPress={() => isCurrentItem && audioPlayer.seekForward(10)}
+                    disabled={!item.audioUrl}
+                  >
+                    <Forward10Icon width={32} height={32} />
+                  </TouchableOpacity>
+                </View>
+                {isCurrentItem && item.audioUrl && (
+                  <Text style={styles.audioDuration}>
+                    {audioPlayer.isLoading ? '--:--' : audioPlayer.totalTime}
+                  </Text>
+                )}
               </View>
             )}
           </View>
@@ -312,12 +322,12 @@ export const FortyDay = () => {
           scrollEventThrottle={16}
         >
         <View style={[styles.headerSpacer, { height: insets.top + 100 }]} />
-        <Text style={styles.mainTitle}>40 Day Journey</Text>
+        <Text style={styles.mainTitle}>40 Day Challenge</Text>
 
         {loading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#8B5CF6" />
-            <Text style={styles.loadingText}>Loading your journey...</Text>
+            <Text style={styles.loadingText}>Loading your challenge...</Text>
           </View>
         )}
 
@@ -337,9 +347,14 @@ export const FortyDay = () => {
           <>
             <View style={styles.carouselContainer}>
               <TouchableOpacity
-                style={[styles.navButton, styles.navButtonLeft]}
+                style={[
+                  styles.navButton,
+                  styles.navButtonLeft,
+                  activeIndex === 0 && styles.navButtonDisabled,
+                ]}
                 onPress={handlePrevious}
                 disabled={activeIndex === 0}
+                activeOpacity={activeIndex === 0 ? 1 : 0.7}
               >
                 <ChevronLeftIcon width={24} height={24} />
               </TouchableOpacity>
@@ -363,9 +378,14 @@ export const FortyDay = () => {
               </View>
 
               <TouchableOpacity
-                style={[styles.navButton, styles.navButtonRight]}
+                style={[
+                  styles.navButton,
+                  styles.navButtonRight,
+                  activeIndex >= days.length - 1 && styles.navButtonDisabled,
+                ]}
                 onPress={handleNext}
                 disabled={activeIndex >= days.length - 1}
+                activeOpacity={activeIndex >= days.length - 1 ? 1 : 0.7}
               >
                 <ChevronRightIcon width={24} height={24} />
               </TouchableOpacity>
@@ -389,7 +409,7 @@ export const FortyDay = () => {
                       >
                         <View style={styles.taskLeft}>
                           <View style={styles.soundWaveContainer}>
-                            <SoundWaveIcon width={32} height={32} />
+                            <Image source={require('../../assets/task.png')} style={styles.ravenIcon} />
                           </View>
                           <View style={styles.taskTextContainer}>
                             <Text style={styles.taskTitle}>{task.title}</Text>
@@ -409,7 +429,7 @@ export const FortyDay = () => {
                       <View style={styles.taskItem}>
                         <View style={styles.taskLeft}>
                           <View style={styles.soundWaveContainer}>
-                            <SoundWaveIcon width={32} height={32} />
+                            <Image source={require('../../assets/task.png')} style={styles.ravenIcon} />
                           </View>
                           <View style={styles.taskTextContainer}>
                             <Text style={styles.taskTitle}>{task.title}</Text>
@@ -483,7 +503,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Cinzel_600SemiBold',
   },
   headerRight: {
     width: 40,
@@ -524,6 +544,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 10,
   },
+  navButtonDisabled: {
+    opacity: 0.35,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
   navButtonLeft: {
     marginRight: 8,
   },
@@ -532,7 +556,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    minHeight: 260,
+    minHeight: 280,
     borderRadius: 20,
     overflow: 'hidden',
     position: 'relative',
@@ -551,11 +575,15 @@ const styles = StyleSheet.create({
   cardContentWrapper: {
     flex: 1,
     zIndex: 2,
+    justifyContent: 'space-between',
   },
   cardHeader: {
+    position: 'absolute',
+    top: 12,
+    right: 20,
+    zIndex: 3,
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    padding: 20,
   },
   flagButton: {
     width: 42,
@@ -574,20 +602,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardContent: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingBottom: 20,
+    flexShrink: 1,
+    justifyContent: 'flex-start',
+    paddingTop: 24,
+    paddingBottom: 8,
     paddingHorizontal: 20,
   },
   dayLabel: {
     fontFamily: 'Cinzel_600SemiBold',
-    fontSize: 18,
+    fontSize: 28,
     color: '#fff',
+    paddingBottom: 8,
   },
   dayNumber: {
     fontFamily: 'Cinzel_400Regular',
     fontSize: 76,
     color: '#fff',
+    lineHeight: 86,
   },
   dayTextLocked: {
     color: '#9CA3AF',
@@ -603,26 +634,36 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto_700Bold',
   },
   mediaControls: {
-    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 20,
+    minHeight: 88,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
   },
-  mediaControlsContainer: {
-    flexDirection: 'row',
-    width: 100,
-    height: 36,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'space-around',
+  audioControlsWrapper: {
     alignItems: 'center',
-    paddingHorizontal: 8,
   },
-  mediaIconArea: {
-    flex: 1,
+  audioControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  audioControlBtn: {
     justifyContent: 'center',
     alignItems: 'center',
-    height: '100%',
+    padding: 4,
+  },
+  audioPlayBtn: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
+  },
+  audioDuration: {
+    fontFamily: 'Roboto_400Regular',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 8,
   },
   mediaIconAreaDisabled: {
     opacity: 0.3,
@@ -685,6 +726,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  ravenIcon: {
+    width: 36,
+    height: 36,
+    resizeMode: 'contain',
   },
   taskTextContainer: {
     flex: 1,
