@@ -48,6 +48,7 @@ const Drawer = createDrawerNavigator();
 function HomeTabs() {
   return (
     <Tab.Navigator
+      initialRouteName={ScreenNames.FORTY_DAY}
       screenOptions={{
         animation: 'shift',
         tabBarStyle: {

@@ -106,7 +106,7 @@ export function Nickname() {
               />
               {storedPurpose === 'help-someone' && (
                 <Text style={styles.supportDescription}>
-                  We're really glad you're here to support someone you care about. You can listen to the 40 Temptations and follow the 40-Day Journey to understand the daily steps your loved one is taking — and how you can support them along the way.
+                  We're really glad you're here to support someone you care about. You can listen to the 40 Temptations and follow the 40-Day Challenge to understand the daily steps your loved one is taking — and how you can support them along the way.
                 </Text>
               )}
             </ScrollView>

@@ -5,13 +5,13 @@ const PauseIcon = (props: SvgProps) => (
   <Svg
     width={props.width || 36}
     height={props.height || 36}
-    viewBox="0 0 26 26"
+    viewBox="0 0 36 36"
     fill="none"
     {...props}
   >
     <Path
       fill={props.color || "#fff"}
-      d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"
+      d="M11 10h4v16h-4V10zm10 0h4v16h-4V10z"
     />
   </Svg>
 )

@@ -83,7 +83,7 @@ export function Subscription() {
 
   const benefits = [
     'Full access to all temptations',
-    'Full 40-day journey',
+    'Full 40-day challenge',
     'Cancel anytime',
     'New content as we add it',
   ];

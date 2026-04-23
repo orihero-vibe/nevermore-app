@@ -4,6 +4,7 @@ const BackwardIcon = (props: SvgProps) => (
   <Svg
     width={36}
     height={36}
+    viewBox="0 0 36 36"
     fill="none"
     {...props}
   >

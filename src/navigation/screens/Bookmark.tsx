@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Cinzel_600SemiBold',
   },
   headerRight: {
     width: 40,

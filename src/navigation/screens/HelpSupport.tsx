@@ -76,7 +76,7 @@ export const HelpSupport: React.FC = () => {
   const route = useRoute<RouteProp<HelpSupportRouteParams, typeof ScreenNames.HELP_SUPPORT>>();
   const { profile } = useUserProfile();
   const preSelectedReason = route.params?.preSelectedReason;
-  const [selectedReason, setSelectedReason] = useState<string>(preSelectedReason || 'Feedback');
+  const [selectedReason, setSelectedReason] = useState<string>(preSelectedReason || 'Technical Issue/Bug');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const maxCharacters = 1000;
