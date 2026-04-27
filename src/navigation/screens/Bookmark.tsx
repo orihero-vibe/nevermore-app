@@ -225,10 +225,10 @@ export function Bookmark() {
           <View style={styles.emptyStateContainer}>
             <BlurView intensity={20} tint="dark" style={styles.emptyStateCard}>
               <Text style={styles.emptyStateTitle}>
-                Bookmark your favourite temptations.
+                This is your fight.
               </Text>
               <Text style={styles.emptyStateSubtitle}>
-                We'll save them here for you.
+                Mark the temptations that matter.
               </Text>
               <View style={styles.emptyStateIconContainer}>
                 <ExpoImage 
