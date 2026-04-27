@@ -22,7 +22,7 @@ export const ReflectionQuestionItem: React.FC<ReflectionQuestionItemProps> = ({
   isSelected = false
 }) => {
   const isActive = isPlaying || isLoading || isSelected;
-  const displayLabel = label || (questionNumber !== undefined ? `Question ${questionNumber}` : undefined);
+  const displayLabel = label || (questionNumber !== undefined ? `Exercise ${questionNumber}` : undefined);
   
   return (
     <View>

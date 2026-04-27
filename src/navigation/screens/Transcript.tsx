@@ -2,6 +2,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useRef } from 'react';
 import {
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -83,6 +84,12 @@ export default function Transcript() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.container}>
+        <ImageBackground
+          source={require('../../assets/raven.png')}
+          style={StyleSheet.absoluteFillObject}
+          imageStyle={{ opacity: 0.5 }}
+          resizeMode="cover"
+        />
         <View style={[styles.header, { paddingTop: insets.top }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <ArrowLeftIcon />
@@ -149,8 +156,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Roboto_400Regular',
+    fontFamily: 'Cinzel_600SemiBold',
+    letterSpacing: 2,
   },
   scroll: {
     flex: 1,
