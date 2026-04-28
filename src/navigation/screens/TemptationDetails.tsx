@@ -186,7 +186,6 @@ export default function TemptationDetails() {
 
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
-  const suggestionFont = useFont(Roboto_400Regular, 14);
 
   const handleBack = () => {
     navigation.goBack();
@@ -262,25 +261,7 @@ export default function TemptationDetails() {
         {extractedCategoryId && (
           <Animated.View style={[styles.canvasContainer, canvasAnimatedStyle]}>
             <Canvas style={styles.canvas}>
-              {suggestionFont && (
-                <>
-                  <SkiaText
-                    x={(width - suggestionFont.getTextWidth('We suggest beginning with Recovery and then moving')) / 2 - 5}
-                    y={50}
-                    text="We suggest beginning with Recovery and then moving"
-                    font={suggestionFont}
-                    color="white"
-                  />
-                  <SkiaText
-                    x={(width - suggestionFont.getTextWidth('to Support whenever you feel ready.')) / 2 - 5}
-                    y={70}
-                    text="to Support whenever you feel ready."
-                    font={suggestionFont}
-                    color="white"
-                  />
-                </>
-              )}
-              {tabSwitcher.containerElement}
+{tabSwitcher.containerElement}
               {tabSwitcher.indicatorElement}
               {tabSwitcher.textElements}
             </Canvas>
@@ -340,7 +321,7 @@ export default function TemptationDetails() {
                 <Image
                   source={{ uri: item }}
                   style={styles.imagePlaceholder}
-                  contentFit="cover"
+                  contentFit="contain"
                 />
               )}
               contentContainerStyle={styles.imageListContainer}
@@ -386,7 +367,7 @@ export default function TemptationDetails() {
         )}
 
         <View style={styles.reflectionSection}>
-          <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Reflection Questions</Text>
+          <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Exercises & Questions</Text>
           {audioFiles.length > 0 && (
             <FlatList
               data={audioFiles}
@@ -476,11 +457,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Roboto_400Regular',
+    fontFamily: 'Cinzel_600SemiBold',
+    letterSpacing: 2,
   },
   headerSpacer: {
-    width:40,
+    width: 40,
   },
   bookmarkButton: {
     padding: 5,
@@ -489,7 +470,7 @@ const styles = StyleSheet.create({
     height: 160,
     position: 'relative',
     overflow: 'visible',
-    marginTop: 90,
+    marginTop: 10,
   },
   canvas: {
     width: '100%',
@@ -581,8 +562,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Roboto_400Regular',
+    fontFamily: 'Cinzel_400Regular',
+    letterSpacing: 1.5,
   },
   reflectionSection: {
     marginBottom: 30,

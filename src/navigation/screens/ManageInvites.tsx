@@ -310,9 +310,9 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#ffffff',
-    fontFamily: 'Roboto_600SemiBold',
+    fontFamily: 'Cinzel_600SemiBold',
+    letterSpacing: 2,
   },
   headerSpacer: {
     width: 40,

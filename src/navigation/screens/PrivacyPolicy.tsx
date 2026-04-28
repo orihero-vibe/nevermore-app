@@ -1,31 +1,24 @@
 import React from 'react';
 import {
-  View,
-  Text,
+  ActivityIndicator,
   StyleSheet,
+  Text,
   TouchableOpacity,
-  ScrollView,
-  ImageBackground,
-  useWindowDimensions,
+  View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import RenderHTML from 'react-native-render-html';
-import ChevronLeftIcon from '../../assets/icons/chevron-left';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LoadingSpinner } from '../../components/LoadingSpinner';
-import { usePrivacyPolicy } from '../../hooks/usePrivacyPolicy';
+import { WebView } from 'react-native-webview';
+import ChevronLeftIcon from '../../assets/icons/chevron-left';
+
+const PRIVACY_URL =
+  'https://app.termly.io/policy-viewer/policy.html?policyUUID=bf4f1df0-fd2a-4fee-8933-8f2c781da8a4';
 
 export const PrivacyPolicy: React.FC = () => {
   const navigation = useNavigation();
-  const { width } = useWindowDimensions();
-  const { content, loading, error } = usePrivacyPolicy();
 
   return (
-    <ImageBackground
-      source={require('../../assets/gradient.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
+    <View style={styles.backgroundImage}>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity
@@ -39,63 +32,26 @@ export const PrivacyPolicy: React.FC = () => {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.pageTitle}>Privacy Policy</Text>
-
-          <View style={styles.contentContainer}>
-            {loading && (
-              <View style={styles.loadingContainer}>
-                <LoadingSpinner size={40} color="#8B5CF6" />
-                <Text style={styles.loadingText}>Loading...</Text>
-              </View>
-            )}
-
-            {error && !loading && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            {!loading && !error && content && (
-              <RenderHTML
-                contentWidth={width - 48}
-                source={{ html: content }}
-                baseStyle={styles.htmlContent}
-                tagsStyles={{
-                  p: styles.htmlParagraph,
-                  h1: styles.htmlHeading1,
-                  h2: styles.htmlHeading2,
-                  h3: styles.htmlHeading3,
-                  ul: styles.htmlList,
-                  ol: styles.htmlList,
-                  li: styles.htmlListItem,
-                  strong: styles.htmlStrong,
-                  em: styles.htmlEmphasis,
-                }}
-              />
-            )}
-
-            {!loading && !error && !content && (
-              <Text style={styles.contentText}>
-                We collect basic info like your name, email, and how you use the app. This helps us improve your experience and keep things running smoothly. We don't sell your data and only work with trusted services that help support the app.
-              </Text>
-            )}
-          </View>
-        </ScrollView>
+        <WebView
+          source={{ uri: PRIVACY_URL }}
+          style={styles.webView}
+          startInLoadingState
+          renderLoading={() => (
+            <ActivityIndicator
+              style={StyleSheet.absoluteFillObject}
+              color="#8B5CF6"
+              size="large"
+            />
+          )}
+        />
       </SafeAreaView>
-    </ImageBackground>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
-    width: '100%',
-    height: '100%', 
     backgroundColor: '#131313',
   },
   container: {
@@ -113,113 +69,17 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: '#ffffff',
-    fontFamily: 'Roboto_600SemiBold',
+    fontFamily: 'Cinzel_600SemiBold',
+    letterSpacing: 2,
   },
   headerSpacer: {
     width: 40,
   },
-  scrollView: {
+  webView: {
     flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 40,
-  },
-  pageTitle: {
-    fontSize: 24,
-    fontWeight: '400',
-    color: '#ffffff',
-    marginBottom: 32,
-    fontFamily: 'Cinzel_400Regular',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  contentContainer: {
-    flex: 1,
-  },
-  contentText: {
-    fontSize: 16,
-    color: '#ffffff',
-    lineHeight: 24,
-    fontFamily: 'Roboto_400Regular',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#ffffff',
-    marginTop: 16,
-    fontFamily: 'Roboto_400Regular',
-  },
-  errorContainer: {
-    paddingVertical: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#ff6b6b',
-    lineHeight: 24,
-    fontFamily: 'Roboto_400Regular',
-  },
-  htmlContent: {
-    fontSize: 16,
-    color: '#ffffff',
-    lineHeight: 24,
-    fontFamily: 'Roboto_400Regular',
-  },
-  htmlParagraph: {
-    marginBottom: 16,
-    fontSize: 16,
-    color: '#ffffff',
-    lineHeight: 24,
-    fontFamily: 'Roboto_400Regular',
-  },
-  htmlHeading1: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 16,
-    fontFamily: 'Roboto_600SemiBold',
-  },
-  htmlHeading2: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 12,
-    marginTop: 16,
-    fontFamily: 'Roboto_600SemiBold',
-  },
-  htmlHeading3: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 10,
-    marginTop: 12,
-    fontFamily: 'Roboto_600SemiBold',
-  },
-  htmlList: {
-    marginBottom: 16,
-  },
-  htmlListItem: {
-    fontSize: 16,
-    color: '#ffffff',
-    lineHeight: 24,
-    marginBottom: 8,
-    fontFamily: 'Roboto_400Regular',
-  },
-  htmlStrong: {
-    fontWeight: '600',
-    fontFamily: 'Roboto_600SemiBold',
-  },
-  htmlEmphasis: {
-    fontStyle: 'italic',
+    backgroundColor: '#131313',
   },
 });
 
 export default PrivacyPolicy;
-

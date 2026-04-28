@@ -2,8 +2,9 @@ import * as React from "react"
 import Svg, { Path, SvgProps } from "react-native-svg"
 const HomeIcon = (props: SvgProps) => (
   <Svg
-    width={18}
-    height={19}
+    width={24}
+    height={24}
+    viewBox="-2 -2 24 24"
     fill="none"
     {...props}
   >

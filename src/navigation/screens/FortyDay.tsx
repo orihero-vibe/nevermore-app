@@ -145,7 +145,7 @@ export const FortyDay = () => {
 
     prepareAudio();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex, days]);
+  }, [activeIndex, days[activeIndex]?.audioUrl]);
 
   const currentDayData = days[activeIndex];
 

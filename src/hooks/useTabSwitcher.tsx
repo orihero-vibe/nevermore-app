@@ -95,8 +95,8 @@ export const useTabSwitcher = ({
 
 
   // Use BackdropFilter for blur effect - Skia supports it on both iOS and Android
-  const containerHeight = 40;
-  const buttonHeight = 32;
+  const containerHeight = 43;
+  const buttonHeight = 34;
   const verticalPadding = 4;
   
   const containerElement = (
