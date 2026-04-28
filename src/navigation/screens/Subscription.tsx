@@ -28,7 +28,7 @@ type PlanType = 'monthly' | 'yearly';
 
 export function Subscription() {
   const navigation = useNavigation<any>();
-  const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>('yearly');
   const width = Dimensions.get('window').width;
   const bg = useImage(require('../../assets/gradient.png'));
   const {
@@ -81,11 +81,17 @@ export function Subscription() {
     }
   };
 
-  const benefits = [
-    'Full access to all temptations',
-    'Full 40-day challenge',
+  const yearlyBenefits = [
+    'Full access to all 40 guided temptations',
+    'Complete 40-day behavior-change system',
+    'Dual perspective content (Recovery + Support)',
+    'Unlimited access to audio, transcripts, and exercises',
+  ];
+
+  const monthlyBenefits = [
+    'Full access to the Nevermore experience',
+    'All content, audio, and exercises included',
     'Cancel anytime',
-    'New content as we add it',
   ];
 
   const renderPlanCard = (
@@ -96,6 +102,7 @@ export function Subscription() {
   ) => {
     const planLabel = planType === 'monthly' ? 'Monthly' : 'Yearly';
     const isYearly = planType === 'yearly';
+    const benefits = isYearly ? yearlyBenefits : monthlyBenefits;
 
     return (
       <TouchableOpacity
@@ -111,8 +118,14 @@ export function Subscription() {
           imageStyle={styles.planHeaderImage}
         >
           <Text style={styles.planTitle}>{title}</Text>
+          {isYearly && (
+            <Text style={styles.planSubline}>★ Recommended for the full 40-day experience</Text>
+          )}
+          {!isYearly && (
+            <Text style={styles.planSubline}>Flexible access</Text>
+          )}
         </ImageBackground>
-        
+
         <View style={styles.planContent}>
           <View style={styles.benefitsContainer}>
           {benefits.map((benefit, index) => (
@@ -122,7 +135,7 @@ export function Subscription() {
             </View>
           ))}
           </View>
-          
+
           <View style={styles.planFooter}>
             <View style={styles.planSelection}>
               <View style={[styles.radioButton]}>
@@ -130,12 +143,12 @@ export function Subscription() {
               </View>
               <Text style={styles.planLabel}>{planLabel}</Text>
             </View>
-            
+
             <View style={styles.priceContainer}>
               <Text style={styles.price}>{price}</Text>
-              <Text style={styles.priceUnit}>{isYearly ? 'per year' : 'per month'}</Text>
+              <Text style={styles.priceUnit}>{isYearly ? '/year' : '/month'}</Text>
               {isYearly && (
-                <Text style={styles.priceHint}>~$3.75 / month equivalent</Text>
+                <Text style={styles.priceHint}>~$8.25/month</Text>
               )}
             </View>
           </View>
@@ -171,7 +184,7 @@ export function Subscription() {
             <Text style={styles.title}>SUBSCRIPTION</Text>
             
             <Text style={styles.description}>
-              You have 3 free days. After that you must subscribe to continue.
+              Start your <Text style={styles.descriptionHighlight}>3-day free trial</Text>. Continue anytime with a subscription.
             </Text>
 
             {isSubscribed ? (
@@ -183,8 +196,8 @@ export function Subscription() {
               <>
                 {/* Subscription Plans */}
                 <View style={styles.plansContainer}>
-                  {renderPlanCard('monthly', 'MONTHLY', '$4.99', selectedPlan === 'monthly')}
-                  {renderPlanCard('yearly', 'YEARLY', '$44.99', selectedPlan === 'yearly')}
+                  {renderPlanCard('yearly', 'YEARLY', '$99', selectedPlan === 'yearly')}
+                  {renderPlanCard('monthly', 'MONTHLY', '$13.99', selectedPlan === 'monthly')}
                 </View>
 
                 {error ? (
@@ -274,6 +287,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto_400Regular',
     lineHeight: 24,
   },
+  descriptionHighlight: {
+    color: '#8B5CF6',
+  },
   plansContainer: {
     marginBottom: 20,
   },
@@ -308,6 +324,13 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     textAlign: 'center',
+  },
+  planSubline: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    fontFamily: 'Roboto_400Regular',
+    textAlign: 'center',
+    marginTop: 4,
   },
   planContent: {
     paddingHorizontal: 4,
